@@ -1,0 +1,48 @@
+
+# Django
+*# Django
+*.pyc
+__pycache__/
+*.sqlite3
+.env
+*.log
+media/
+db.sqlite3
+staticfiles/
+
+# Entornos virtuales Python
+env/
+venv/
+.env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Archivos de sistema
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+[Tt]humbs.db
+
+# Archivos de base de datos
+*.db
+*.sqlite3
+
+# Environment variables
+.env
+.env.local
+.env.production
