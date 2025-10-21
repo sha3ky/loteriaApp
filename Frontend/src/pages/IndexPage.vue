@@ -130,7 +130,7 @@ import CountdownTimer from "../components/CountdownTimer.vue";
 import { slices as importedSlices } from "../variosJs/slices.js";
 import fondoImagen from "../images/fondo.jpg";
 import ConfettiAnimation from "../components/ConfettiAnimation.vue";
-import BASE_URL from "../variosJs/config";
+
 import wonSound from "../sounds/winning2.wav";
 import loseSound from "../sounds/lose.wav";
 import clickSound from "../sounds/click.wav";

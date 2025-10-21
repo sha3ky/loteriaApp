@@ -46,7 +46,7 @@
 
 <script>
 import { ref, onMounted, onUnmounted } from "vue";
-import BASE_URL from "../variosJs/config";
+import { api } from 'boot/axios';
 import { toRaw } from "vue";
 import { Notify } from "quasar";
 export default {
@@ -69,19 +69,31 @@ export default {
     const updateInterval = 5000; // 5 segundos
     let intervalId = null;
 
+
+
     const fetchStatusUpdate = async () => {
       try {
-        const response = await fetch(`${BASE_URL}/api/number-status/`);
-
-        if (response.ok) {
-          const updatedStatus = await response.json();
-          status.value = updatedStatus;
-
-        } else {
-          console.error("Error al obtener el estado de los números.");
-        }
+        // ✅ Usar axios en lugar de apiCall
+        const response = await api.get('/api/number-status/');
+        // Con axios, response.ok no existe - la respuesta viene directamente
+        const updatedStatus = response.data; // ← Los datos vienen en .data
+        status.value = updatedStatus;
+        console.log("✅ Estado actualizado:", updatedStatus);
+        
       } catch (error) {
-        console.error("Error al actualizar el estado:", error);
+        console.error("🚨 Error al actualizar el estado:", error);
+        
+        // Manejo de errores con axios
+        if (error.response) {
+          // El servidor respondió con un código de error
+          console.error("❌ Error del servidor:", error.response.data);
+        } else if (error.request) {
+          // La request se hizo pero no hubo respuesta
+          console.error("❌ Error de red:", error.request);
+        } else {
+          // Algo pasó en la configuración
+          console.error("❌ Error:", error.message);
+        }
       }
     };
 

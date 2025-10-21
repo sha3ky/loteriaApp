@@ -34,16 +34,16 @@ from loteria.views import (
     ProductoListView,
     ProductoDeleteView,
     ProductoCreateView,
-)  # Asegúrate de que la importación sea correcta
+    LoginView,
+    GirarRuletaView,
+    obtener_configuracion_cliente,
+)
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from django.conf import settings
 from django.conf.urls.static import static
 
-# router = DefaultRouter()
-# router.register(r'personas', PersonasViewSet, basename='personas')  # Registra el ViewSet
-
-
 urlpatterns = [
+    # URLs existentes
     path("api/productos/", ProductoCreateView.as_view(), name="producto-create"),
     path(
         "api/productos/<int:producto_id>/",
@@ -62,16 +62,22 @@ urlpatterns = [
         name="update_persona",
     ),
     path("api/get-winner/<int:winner_id>/", get_winner, name="get_winner"),
-    path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/get-allData/", get_allData, name="get_all_data"),
-    path("api/reserve-number/", reserve_number, name="reserve_number"),  # Ruta añadida
-    path("api/number-status/", number_status, name="number_status"),  # Ruta añadida
-    path("admin/", admin.site.urls),  # URL para el panel de administración
-    # path('', include(router.urls)),
+    path("api/reserve-number/", reserve_number, name="reserve_number"),
+    path("api/number-status/", number_status, name="number_status"),
+    
+    # NUEVAS URLs
+    path("api/login/", LoginView.as_view(), name="login"),
+    path("api/girar-ruleta/", GirarRuletaView.as_view(), name="girar_ruleta"),
+    path("api/configuracion-cliente/", obtener_configuracion_cliente, name="configuracion_cliente"),
+    
+    # JWT (MANTENER - son necesarios)
     path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    
+    # Admin
+    path("admin/", admin.site.urls),
 ]
 
-# Sirviendo archivos estáticos y media en modo de desarrollo
-if settings.DEBUG:  # Solo en desarrollo
+if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

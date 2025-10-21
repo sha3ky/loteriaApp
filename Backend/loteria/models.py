@@ -6,7 +6,10 @@ class Cliente(models.Model):
     nombre = models.CharField(max_length=100)
     token = models.CharField(max_length=50, unique=True)  # ID único por frontend
     creado_en = models.DateTimeField(auto_now_add=True)
-    
+    descripcion = models.TextField(blank=True)
+    dominio = models.CharField(max_length=200, blank=True)
+    activo = models.BooleanField(default=True)
+   
     def __str__(self):
         return self.nombre
 
@@ -102,7 +105,6 @@ class ConfiguracionCliente(models.Model):
 
     def __str__(self):
         return f"Configuración de {self.cliente.nombre}"
-
 
 class Sorteo(models.Model):
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE)

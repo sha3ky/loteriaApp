@@ -56,8 +56,8 @@
 
 <script>
 import { ref, onMounted, onUnmounted, nextTick } from "vue";
-import { getPosts } from "../variosJs/post-loader";
-
+/* import { getPosts } from "../variosJs/post-loader"; */
+import { api } from 'boot/axios';
 export default {
   setup() {
     const panel= ref('muroMovil')
@@ -74,10 +74,35 @@ export default {
       if (loading.value) {
         return; // Evita múltiples solicitudes concurrentes
       }
+      
       loading.value = true; // Marca el estado como cargando
+      
       try {
-        const newPosts = await getPosts(count); // Obtiene nuevos posts
-        contenedor.value=newPosts
+        const productData = []; // Aquí se cargarán los datos de la API
+
+        // Solicitar datos de los productos desde la API
+        const response = await api.get('/api/getproductos/');
+
+        if (response.status === 200) {
+          productData.push(...response.data);
+        } else {
+          console.error("Error al obtener los datos de los productos.");
+          return;
+        }
+
+        // Asociar productos con las rutas completas de sus imágenes
+        const newPosts = productData.map((product) => {
+          return {
+            nombre: product.nombre, // Nombre del producto
+            descripcion: product.descripcion, // Descripción del producto
+            price: product.precio, // Precio del producto
+            cantidad: product.cantidad, // Cantidad disponible
+            imagen: product.imagen_base64, // Construir la URL completa de la imagen
+          };
+        });
+
+        contenedor.value = newPosts;
+        
         if (newPosts.length > 0) {
           posts.value.push(...newPosts); // Agrega los nuevos posts si existen
         } else {

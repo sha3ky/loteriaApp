@@ -39,7 +39,7 @@
 
 // CountdownTimer.vue - Adaptado
 import { ref, onMounted, onUnmounted, computed } from "vue";
-import { api } from "./../boot/axios";
+import { api } from 'boot/axios';
 export default {
   name: "CountdownTimer",
   setup() {
@@ -50,11 +50,16 @@ export default {
     const seconds = ref(0)
     
     // Cargar configuración del cliente
-    const cargarConfiguracion = async () => {
-      const response = await api.get(`/api/configuracion-cliente/?token=${CLIENTE_TOKEN}`)
-      configuracion.value = await response.json()
-    }
-    
+ const cargarConfiguracion = async () => {
+  try {
+    // ✅ Usar axios - el token se agrega AUTOMÁTICAMENTE
+    const response = await api.get('/api/configuracion-cliente/')
+    configuracion.value = response.data // ← response.data con axios
+    console.log("✅ Configuración cargada:", response.data)
+  } catch (error) {
+    console.error("❌ Error cargando configuración:", error)
+  }
+}
     const targetDate = computed(() => {
       return new Date(configuracion.value.fecha_final_countdown).getTime()
     })

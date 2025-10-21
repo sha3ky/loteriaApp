@@ -10,7 +10,8 @@
 import random
 from rest_framework.permissions import IsAuthenticated
 from asgiref.sync import async_to_sync
-from channels.layers import get_channel_layer  # ✅ CORRECTO
+""" from channels.layers import get_channel_layer  # ✅ CORRECTO"""
+
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from .models import (

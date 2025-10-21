@@ -104,7 +104,6 @@ import { defineComponent, ref, onMounted, watch, toRaw } from "vue";
 import InfiniteScrollComponent from "components/InfiniteScrollComponent.vue";
 import NumbersSquares from "src/components/NumbersSquares.vue";
 import { useLayoutStore } from "../stores/layoutStore";
-import { api } from "./../boot/axios";
 import { useRouter } from "vue-router";
 import { useQuasar } from "quasar";
 export default defineComponent({
@@ -143,61 +142,58 @@ export default defineComponent({
       formData.value.password = "";
     };
 
-    const accessAdmin = async () => {
+  const accessAdmin = async () => {
+  try {
+    // ✅ Usar axios en lugar del mixin
+    const response = await this.$api.post("/api/token/", {
+      username: formData.value.username,
+      password: formData.value.password,
+      // cliente_token: "La_mata1985" // ← NO necesario, se agrega AUTOMÁTICAMENTE en el interceptor
+    });
+
+    // Verify if the tokens exist
+    const { access, refresh } = response.data; // ← response.data con axios
+    if (access && refresh) {
+      // Store tokens in localStorage
+      localStorage.setItem("accessToken", access);
+      localStorage.setItem("refreshToken", refresh);
+      
       try {
-        // Start login request
-        const response = await api.post("/api/token/", {
-          username: formData.value.username,
-          password: formData.value.password,
-        });
-
-        // Verify if the tokens exist
-        const { access, refresh } = response.data;
-        if (access && refresh) {
-          // Store tokens in localStorage
-          localStorage.setItem("accessToken", access);
-          localStorage.setItem("refreshToken", refresh);
-          // Redirect to the admin page
-
-          try {
-            console.log(router);
-            router.push("/adminpage");
-
-            closeDialog();
-          } catch (error) {
-            console.error("Navigation failed:", error);
-          }
-        } else {
-          throw new Error("Invalid token response from the server.");
-        }
+        console.log(router);
+        router.push("/adminpage");
+        closeDialog();
       } catch (error) {
-        console.error("Login error:", error);
-
-        // Handle different error statuses
-        if (error.response?.status === 401) {
-          $q.notify({
-            type: "negative",
-            message:
-              "Credenciales incorrectas. Por favor, verifica tu usuario y contraseña.",
-          });
-        } else if (error.response?.status === 400) {
-          $q.notify({
-            type: "negative",
-            message: "Solicitud incorrecta. Revisa los datos ingresados.",
-          });
-        } else {
-          $q.notify({
-            type: "negative",
-            message: "Error en el servidor. Intenta nuevamente más tarde.",
-          });
-        }
-
-        // Clear stored tokens in case of error
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
+        console.error("Navigation failed:", error);
       }
-    };
+    } else {
+      throw new Error("Invalid token response from the server.");
+    }
+  } catch (error) {
+    console.error("Login error:", error);
 
+    // Handle different error statuses
+    if (error.response?.status === 401) { // ← error.response con axios
+      $q.notify({
+        type: "negative",
+        message: "Credenciales incorrectas. Por favor, verifica tu usuario y contraseña.",
+      });
+    } else if (error.response?.status === 400) {
+      $q.notify({
+        type: "negative",
+        message: "Solicitud incorrecta. Revisa los datos ingresados.",
+      });
+    } else {
+      $q.notify({
+        type: "negative",
+        message: "Error en el servidor. Intenta nuevamente más tarde.",
+      });
+    }
+
+    // Clear stored tokens in case of error
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+  }
+};
     const logout = () => {
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");

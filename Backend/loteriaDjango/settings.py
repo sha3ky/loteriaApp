@@ -46,6 +46,14 @@ CORS_ALLOW_HEADERS = [
     "content-type",
     "authorization",
     "x-requested-with",
+     "x-cliente-token",  # ← ¡AGREGAR ESTO!
+    "x-client-name",    # ← Y ESTO por si acaso
+]
+
+
+CORS_EXPOSE_HEADERS = [
+    "x-cliente-token",
+    "x-client-name",
 ]
 # CORS Configuration
 CORS_ALLOW_CREDENTIALS = True
@@ -75,6 +83,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+     "whitenoise.middleware.WhiteNoiseMiddleware",  # Moved up
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -183,6 +192,9 @@ REST_FRAMEWORK = {
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
 }
+
+
+WSGI_APPLICATION = 'loteriaDjango.wsgi.application' 
 # opciones de la authenticacion con tokens
 # SIMPLE_JWT = {
 #     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
