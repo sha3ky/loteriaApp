@@ -34,7 +34,7 @@
       </q-toolbar>
     </q-header>
 
-    <q-drawer v-model="leftDrawerOpen" side="left" behavior="mobile" elevated>
+    <q-drawer v-model="leftDrawerOpen" side="left" behavior="mobile" elevated style="width: 50vh;">
       <div style="justify-content: flex-end; display: flex; padding: 10px">
         <q-btn
           outline
@@ -53,7 +53,7 @@
       </q-list>
     </q-drawer>
 
-    <q-drawer v-model="rightDrawerOpen" side="right" behavior="mobile" bordered>
+    <q-drawer v-model="rightDrawerOpen" side="right" behavior="mobile" bordered style="width: 50vh;">
       <!-- <NumbersSquares :databaseStatus="numbersStatus" /> -->
       <div
         style="

@@ -138,7 +138,8 @@ import { slices as importedSlices } from "../variosJs/slices.js";
 import fondoImagen from "../images/fondo.jpg";
 import ConfettiAnimation from "../components/ConfettiAnimation.vue";
 import BASE_URL from "../variosJs/config";
-import wonSound from "../sounds/winning.wav";
+import wonSound from "../sounds/winning2.wav";
+import loseSound from "../sounds/lose.wav";
 import clickSound from "../sounds/click.wav";
 import hoverSound from "../sounds/hover.wav";
 import leaveSound from "../sounds/hover.wav";
@@ -174,6 +175,7 @@ export default defineComponent({
     });
 
     watch(winnerResult, async (newValue) => {
+      
       showConfetti.value = newValue !== null;
       // miramos el newValue y si no es vacio llamamos al nombre del ganador
       if (newValue !== null) {
@@ -182,6 +184,7 @@ export default defineComponent({
     });
 
     const handleSpinButtonClick = () => {
+      
       stopAllSounds(); // Detener todos los sonidos antes de iniciar el giro
       if (
         !isSpinning.value &&
@@ -240,26 +243,32 @@ export default defineComponent({
     };
 
     const onSpinEnd = (winnerIndex) => {
+      debugger
       console.log("onspinEnd", winnerIndex);
       // Detener el sonido de spinning antes de reproducir el sonido de winning
       if (sounds.value.spinning) {
         stopAudio(sounds.value.spinning);
       }
 
-      // Reproduce el sonido de winning
-      playAudio(sounds.value.won);
-
-      // Muestra confetti mientras suena el audio de winning
-      showConfetti.value = true;
-
-      // Escucha cuando el sonido de 'won' termina y luego apaga el confetti
-      sounds.value.won.onended = () => {
-        showConfetti.value = false;
-      };
+     
+    
 
       // Configura el ganador y termina el giro
       isSpinning.value = false;
       winnerResult.value = slices.value[winnerIndex];
+
+       if( winnerResult.value != null){
+      // Reproduce el sonido de winning
+      playAudio(sounds.value.won);
+      // Muestra confetti mientras suena el audio de winning
+      showConfetti.value = true;
+      }else{
+        playAudio(sounds.value.lose);
+      }
+      // Escucha cuando el sonido de 'won' termina y luego apaga el confetti
+      sounds.value.won.onended = () => {
+        showConfetti.value = false;
+      };
     };
     // Función para detener un audio específico
     const stopAudio = (audio) => {
@@ -283,6 +292,7 @@ export default defineComponent({
       sounds.value.spinButtonHover = new Audio(hoverSound);
       sounds.value.spinButtonLeave = new Audio(leaveSound);
       sounds.value.spinning = new Audio(spinningSound);
+      sounds.value.lose=new Audio(loseSound)
     });
 
     return {
