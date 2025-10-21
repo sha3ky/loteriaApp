@@ -35,7 +35,7 @@ import { ref, onMounted, onUnmounted } from "vue";
 export default {
   name: "CountdownTimer",
   setup() {
-    const initialTargetDate = new Date("2024-12-21T06:17:00").getTime();
+    const initialTargetDate = new Date("2025-12-21T06:17:00").getTime();
     const additionalTime = 2 * 60 * 60 * 1000; // 2 horas en milisegundos
     const targetDate = ref(initialTargetDate);
     // const fechaFinal=ref(false)

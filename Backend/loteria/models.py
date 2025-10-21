@@ -2,7 +2,16 @@ from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 
 
+class Cliente(models.Model):
+    nombre = models.CharField(max_length=100)
+    token = models.CharField(max_length=50, unique=True)  # ID único por frontend
+    creado_en = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return self.nombre
+
 class Personas(models.Model):
+    cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE)  # ← NUEVO
     nombre = models.CharField(max_length=30)  # Campo para el nombre
     apellido = models.CharField(max_length=30)  # Campo para el apellido
     telefono = models.CharField(max_length=15)  # Campo para el teléfono

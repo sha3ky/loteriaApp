@@ -2,7 +2,7 @@
   <div>
     <div style="background-color: black; padding: 5px; margin-bottom: 3px">
       <span style="color: white; font-weight: 700">
-        Por favor, selecciona uno de los 99 números:
+        Por favor, selecciona uno de los 50 números:
       </span>
     </div>
 

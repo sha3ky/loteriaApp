@@ -1,0 +1,6 @@
+Admin hace click "Girar" 
+→ Frontend llama API backend 
+→ Backend genera número aleatorio 
+→ Backend guarda en DB 
+→ Backend envía a todos via WebSocket 
+→ Todos los usuarios ven MISMO resultado
