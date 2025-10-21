@@ -7,13 +7,24 @@
 # class PersonasViewSet(viewsets.ModelViewSet):  # Usar ModelViewSet para manejar todas las operaciones CRUD
 #     queryset = Personas.objects.all()
 #     serializer_class = PersonasSerializer
-
+import random
+from rest_framework.permissions import IsAuthenticated
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer  # ✅ CORRECTO
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from .models import Personas, Producto
+from .models import (
+    Personas, 
+    Producto, 
+    Sorteo,           
+    Cliente,          
+    UserProfile,      
+    ConfiguracionCliente  
+)
 from .serializers import ProductoSerializer
 from django.views.decorators.http import require_http_methods
 import json, os
+from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -29,15 +40,106 @@ TELEGRAM_CHAT_ID = settings.TELEGRAM_CHAT_ID
 # print(f"TELEGRAM_CHAT_ID desde settings: {settings.TELEGRAM_CHAT_ID}")
 
 
+""" class GirarRuletaView(APIView): WEBSOCKETS 
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        cliente_token = request.headers.get('X-Cliente-Token')
+        if not cliente_token:
+            return Response({"error": "Se requiere X-Cliente-Token"}, status=400)
+        
+        cliente = Cliente.objects.get(token=cliente_token)
+        
+        # Verificar que el usuario es staff
+        if not request.user.is_staff:
+            return Response({"error": "No autorizado"}, status=403)
+        
+        ganador = random.randint(1, 50)
+        
+        sorteo = Sorteo.objects.create(
+            cliente=cliente,
+            numero_ganador=ganador,
+            fecha=timezone.now(),
+            admin=request.user
+        )
+        
+         # Notificar via WebSocket (DENTRO de la función)
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'ruleta_cliente_{cliente.id}',
+            {
+                'type': 'ruleta_girada',
+                'ganador': ganador,
+                'sorteo_id': sorteo.id,
+                'fecha': sorteo.fecha.isoformat()
+            }
+        ) 
+        
+        # Return DENTRO de la función
+        return Response({'ganador': ganador, 'sorteo_id': sorteo.id})
+
+ """
+class GirarRuletaView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        cliente_token = request.headers.get('X-Cliente-Token')
+        if not cliente_token:
+            return Response({"error": "Se requiere X-Cliente-Token"}, status=400)
+        
+        cliente = Cliente.objects.get(token=cliente_token)
+        
+        if not request.user.is_staff:
+            return Response({"error": "No autorizado"}, status=403)
+        
+        ganador = random.randint(1, 50)
+        
+        sorteo = Sorteo.objects.create(
+            cliente=cliente,
+            numero_ganador=ganador,
+            fecha=timezone.now(),
+            admin=request.user
+        )
+        
+        # TEMPORAL: Sin WebSocket - solo log
+        print(f"🎯 Ruleta girada - Cliente: {cliente.nombre} - Ganador: {ganador}")
+        
+        return Response({
+            'ganador': ganador, 
+            'sorteo_id': sorteo.id,
+            'message': 'Ruleta girada (sin WebSocket - modo prueba)'
+        })
+
 # //eliminar producto
 class ProductoDeleteView(APIView):
     def delete(self, request, producto_id):
         try:
-            # Log para seguimiento
-            print(f"Intentando eliminar el producto con ID: {producto_id}")
+            # PASO 1: Obtener token del header
+            cliente_token = request.headers.get('X-Cliente-Token')
+            print(f"Paso 1: Token recibido - {cliente_token}")
+            
+            # Validar que el token existe
+            if not cliente_token:
+                print("Error: No se proporcionó X-Cliente-Token en el header")
+                return Response(
+                    {"error": "Se requiere el header X-Cliente-Token."}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # PASO 2: Buscar el cliente
+            try:
+                cliente = Cliente.objects.get(token=cliente_token)
+                print(f"Paso 2: Cliente encontrado - {cliente.nombre}")
+            except Cliente.DoesNotExist:
+                print(f"Error: Cliente con token {cliente_token} no encontrado")
+                return Response(
+                    {"error": "Cliente no encontrado."}, 
+                    status=status.HTTP_404_NOT_FOUND
+                )
 
-            # Buscar el producto por ID
-            producto = Producto.objects.get(id=producto_id)
+            # PASO 3: Buscar el producto SOLO de este cliente
+            print(f"Paso 3: Buscando producto {producto_id} para {cliente.nombre}")
+            producto = Producto.objects.get(id=producto_id, cliente=cliente)  # ← FILTRAR POR CLIENTE
             print(f"Producto encontrado: {producto.nombre}")
 
             # Eliminar la imagen del sistema de archivos si existe
@@ -61,7 +163,7 @@ class ProductoDeleteView(APIView):
             )
 
         except Producto.DoesNotExist:
-            print("El producto no existe en la base de datos.")
+            print(f"Error: Producto {producto_id} no encontrado para {cliente.nombre}")
             return Response(
                 {"error": "Producto no encontrado."}, status=status.HTTP_404_NOT_FOUND
             )
@@ -75,19 +177,44 @@ class ProductoDeleteView(APIView):
 class ProductoCreateView(APIView):
     def post(self, request):
         try:
-            # Extraer datos del request
+            # PASO 1: Obtener token del header
+            cliente_token = request.headers.get('X-Cliente-Token')
+            print(f"Paso 1: Token recibido - {cliente_token}")
+            
+            # Validar que el token existe
+            if not cliente_token:
+                print("Error: No se proporcionó X-Cliente-Token en el header")
+                return Response(
+                    {"error": "Se requiere el header X-Cliente-Token."}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # PASO 2: Buscar el cliente
+            try:
+                cliente = Cliente.objects.get(token=cliente_token)
+                print(f"Paso 2: Cliente encontrado - {cliente.nombre}")
+            except Cliente.DoesNotExist:
+                print(f"Error: Cliente con token {cliente_token} no encontrado")
+                return Response(
+                    {"error": "Cliente no encontrado."}, 
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # PASO 3: Extraer datos del request
             nombre = request.data.get("nombre")
             descripcion = request.data.get("descripcion")
-            cantidad = request.data.get("cantidad", None)  # Opcional
-            precio = request.data.get("precio", None)  # Opcional
-            imagen_base64 = request.data.get("imagen_base64", None)  # Opcional
+            cantidad = request.data.get("cantidad", None)
+            precio = request.data.get("precio", None)
+            imagen_base64 = request.data.get("imagen_base64", None)
 
             # Convertir cantidad y precio si son válidos
             cantidad = int(cantidad) if cantidad else None
             precio = float(precio) if precio else None
 
-            # Crear el producto en la base de datos
+            # PASO 4: Crear el producto ASOCIADO AL CLIENTE
+            print("Paso 4: Creando producto para el cliente")
             producto = Producto.objects.create(
+                cliente=cliente,  # ← ASIGNAR CLIENTE
                 nombre=nombre,
                 descripcion=descripcion,
                 cantidad=cantidad if cantidad else None,
@@ -95,6 +222,7 @@ class ProductoCreateView(APIView):
                 imagen_base64=imagen_base64,
             )
 
+            print(f"Paso 5: Producto creado exitosamente - {producto.nombre} para {cliente.nombre}")
             return Response(
                 {
                     "message": "Producto creado exitosamente!",
@@ -104,42 +232,102 @@ class ProductoCreateView(APIView):
             )
 
         except Exception as e:
-            # Manejo genérico de errores
+            print(f"Error general: {e}")
             return Response(
                 {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
-
 # ver todos los productos de la base de datos
+
 class ProductoListView(APIView):
     def get(self, request):
-        productos = Producto.objects.all()
-        serializer = ProductoSerializer(productos, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        try:
+            # PASO 1: Obtener token del header
+            cliente_token = request.headers.get('X-Cliente-Token')
+            print(f"Paso 1: Token recibido - {cliente_token}")
+            
+            # Validar que el token existe
+            if not cliente_token:
+                print("Error: No se proporcionó X-Cliente-Token en el header")
+                return Response(
+                    {"error": "Se requiere el header X-Cliente-Token."}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # PASO 2: Buscar el cliente
+            try:
+                cliente = Cliente.objects.get(token=cliente_token)
+                print(f"Paso 2: Cliente encontrado - {cliente.nombre}")
+            except Cliente.DoesNotExist:
+                print(f"Error: Cliente con token {cliente_token} no encontrado")
+                return Response(
+                    {"error": "Cliente no encontrado."}, 
+                    status=status.HTTP_404_NOT_FOUND
+                )
 
-
+            # PASO 3: Consultar solo los productos de ESTE cliente
+            print("Paso 3: Consultando productos del cliente")
+            productos = Producto.objects.filter(cliente=cliente)  # ← FILTRAR POR CLIENTE
+            serializer = ProductoSerializer(productos, many=True)
+            
+            print(f"Paso 4: Encontrados {len(productos)} productos para {cliente.nombre}")
+            return Response(serializer.data, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            print(f"Error general: {e}")
+            return Response(
+                {"error": str(e)}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 # update persona en la tabla
+
 class UpdatePersonaView(APIView):
     def put(self, request, persona_id):
         try:
-            # Retrieve the persona instance
-            persona = Personas.objects.get(id=persona_id)
+            # PASO 1: Obtener token del header
+            cliente_token = request.headers.get('X-Cliente-Token')
+            print(f"Paso 1: Token recibido - {cliente_token}")
+            
+            # Validar que el token existe
+            if not cliente_token:
+                print("Error: No se proporcionó X-Cliente-Token en el header")
+                return Response(
+                    {"error": "Se requiere el header X-Cliente-Token."}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # PASO 2: Buscar el cliente
+            try:
+                cliente = Cliente.objects.get(token=cliente_token)
+                print(f"Paso 2: Cliente encontrado - {cliente.nombre}")
+            except Cliente.DoesNotExist:
+                print(f"Error: Cliente con token {cliente_token} no encontrado")
+                return Response(
+                    {"error": "Cliente no encontrado."}, 
+                    status=status.HTTP_404_NOT_FOUND
+                )
 
-            # Parse and update fields dynamically
+            # PASO 3: Buscar la persona SOLO de este cliente
+            print(f"Paso 3: Buscando persona {persona_id} para {cliente.nombre}")
+            persona = Personas.objects.get(id=persona_id, cliente=cliente)  # ← FILTRAR POR CLIENTE
+
+            # PASO 4: Actualizar campos dinámicamente
             for key, value in request.data.items():
                 setattr(persona, key, value)
 
-            # Save the updated persona
+            # Guardar la persona actualizada
             persona.save()
+            print(f"Paso 4: Persona {persona_id} actualizada exitosamente")
 
             return Response(
                 {"message": "Persona updated successfully!"}, status=status.HTTP_200_OK
             )
         except Personas.DoesNotExist:
+            print(f"Error: Persona {persona_id} no encontrada para {cliente.nombre}")
             return Response(
                 {"error": "Persona not found."}, status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
+            print(f"Error general: {e}")
             return Response(
                 {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
@@ -148,21 +336,48 @@ class UpdatePersonaView(APIView):
 class DeletePersonaView(APIView):
     def delete(self, request, persona_id):
         try:
-            # Busca la persona por ID
-            persona = Personas.objects.get(id=persona_id)
+            # PASO 1: Obtener token del header
+            cliente_token = request.headers.get('X-Cliente-Token')
+            print(f"Paso 1: Token recibido - {cliente_token}")
+            
+            # Validar que el token existe
+            if not cliente_token:
+                print("Error: No se proporcionó X-Cliente-Token en el header")
+                return Response(
+                    {"error": "Se requiere el header X-Cliente-Token."}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # PASO 2: Buscar el cliente
+            try:
+                cliente = Cliente.objects.get(token=cliente_token)
+                print(f"Paso 2: Cliente encontrado - {cliente.nombre}")
+            except Cliente.DoesNotExist:
+                print(f"Error: Cliente con token {cliente_token} no encontrado")
+                return Response(
+                    {"error": "Cliente no encontrado."}, 
+                    status=status.HTTP_404_NOT_FOUND
+                )
 
-            # Elimina la persona
+            # PASO 3: Buscar la persona SOLO de este cliente
+            print(f"Paso 3: Buscando persona {persona_id} para {cliente.nombre}")
+            persona = Personas.objects.get(id=persona_id, cliente=cliente)  # ← FILTRAR POR CLIENTE
+
+            # Eliminar la persona
             persona.delete()
+            print(f"Paso 4: Persona {persona_id} eliminada exitosamente")
 
             return Response(
                 {"message": "Persona eliminada exitosamente!"},
                 status=status.HTTP_200_OK,
             )
         except Personas.DoesNotExist:
+            print(f"Error: Persona {persona_id} no encontrada para {cliente.nombre}")
             return Response(
                 {"error": "Persona no encontrada."}, status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
+            print(f"Error general: {e}")
             return Response(
                 {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
@@ -175,32 +390,79 @@ class LoginView(APIView):
 
         user = authenticate(username=username, password=password)
         if user is not None:
-            if user.is_superuser:  # Check if the user is an admin
-                # Generate JWT tokens
+            if user.is_superuser:
+                cliente_token = request.data.get("cliente_token")
+                if not cliente_token:
+                    return Response({"error": "Admin debe especificar cliente_token"}, status=400)
+                
+                cliente = Cliente.objects.get(token=cliente_token)
+                
+                # GENERAR TOKENS JWT
                 refresh = RefreshToken.for_user(user)
-                print("refreshToken", refresh)
-                return Response(
-                    {
+                return Response({
+                    "access": str(refresh.access_token),
+                    "refresh": str(refresh),
+                    "user": {
+                        "id": user.id,
+                        "username": user.username,
+                        "role": "admin",
+                        "cliente_id": cliente.id,
+                        "cliente_nombre": cliente.nombre,
+                    },
+                }, status=status.HTTP_200_OK)
+            
+            else:
+                try:
+                    user_profile = UserProfile.objects.get(user=user)
+                    cliente = user_profile.cliente
+                    
+                    refresh = RefreshToken.for_user(user)
+                    return Response({
                         "access": str(refresh.access_token),
                         "refresh": str(refresh),
                         "user": {
                             "id": user.id,
                             "username": user.username,
-                            "role": "admin",
+                            "role": user_profile.rol,
+                            "cliente_id": cliente.id,
+                            "cliente_nombre": cliente.nombre,
                         },
-                    },
-                    status=status.HTTP_200_OK,
-                )
-            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
-        return Response(
-            {"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED
-        )
+                    })
+                except UserProfile.DoesNotExist:
+                    return Response({"error": "Usuario no tiene cliente asignado"}, status=403)
+        
+        return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
 
 
 @csrf_exempt
 def number_status(request):
     if request.method == "GET":
         try:
+            # PASO 1: Obtener token del header
+            cliente_token = request.headers.get('X-Cliente-Token')
+            print(f"Paso 1: Token recibido - {cliente_token}")
+            
+            # Validar que el token existe
+            if not cliente_token:
+                print("Error: No se proporcionó X-Cliente-Token en el header")
+                return JsonResponse(
+                    {"error": "Se requiere el header X-Cliente-Token."}, 
+                    status=400
+                )
+            
+            # PASO 2: Buscar el cliente
+            try:
+                cliente = Cliente.objects.get(token=cliente_token)
+                print(f"Paso 2: Cliente encontrado - {cliente.nombre}")
+            except Cliente.DoesNotExist:
+                print(f"Error: Cliente con token {cliente_token} no encontrado")
+                return JsonResponse(
+                    {"error": "Cliente no encontrado."}, 
+                    status=404
+                )
+
+            # PASO 3: Consultar solo las personas de ESTE cliente
+            print("Paso 3: Consultando estado de números del cliente")
             numbers_status = {
                 persona.id: {
                     "status": "green" if persona.numero_seleccionado else "red",
@@ -211,19 +473,46 @@ def number_status(request):
                     ),
                     "numero": persona.numero_seleccionado,
                 }
-                for persona in Personas.objects.all()
+                for persona in Personas.objects.filter(cliente=cliente)  # ← FILTRAR POR CLIENTE
             }
+            
+            print(f"Paso 4: Estado de números para {cliente.nombre} - {len(numbers_status)} registros")
             return JsonResponse(numbers_status)
         except Exception as e:
+            print(f"Error general: {e}")
             return JsonResponse({"error": str(e)}, status=500)
     return JsonResponse({"error": "Método no permitido"}, status=405)
-
 
 @csrf_exempt
 def get_winner(request, winner_id):
     if request.method == "GET":
         try:
-            persona = Personas.objects.get(numero_seleccionado=winner_id)
+            # PASO 1: Obtener token del header
+            cliente_token = request.headers.get('X-Cliente-Token')
+            print(f"Paso 1: Token recibido - {cliente_token}")
+            
+            # Validar que el token existe
+            if not cliente_token:
+                print("Error: No se proporcionó X-Cliente-Token en el header")
+                return JsonResponse(
+                    {"error": "Se requiere el header X-Cliente-Token."}, 
+                    status=400
+                )
+            
+            # PASO 2: Buscar el cliente
+            try:
+                cliente = Cliente.objects.get(token=cliente_token)
+                print(f"Paso 2: Cliente encontrado - {cliente.nombre}")
+            except Cliente.DoesNotExist:
+                print(f"Error: Cliente con token {cliente_token} no encontrado")
+                return JsonResponse(
+                    {"error": "Cliente no encontrado."}, 
+                    status=404
+                )
+
+            # PASO 3: Buscar ganador SOLO para este cliente
+            print(f"Paso 3: Buscando ganador {winner_id} para {cliente.nombre}")
+            persona = Personas.objects.get(cliente=cliente, numero_seleccionado=winner_id)  # ← FILTRAR POR CLIENTE
             winner = {
                 "nombre_completo": (
                     f"{persona.nombre} {persona.apellido[0].upper()}."
@@ -232,10 +521,14 @@ def get_winner(request, winner_id):
                 ),
                 "numero": persona.numero_seleccionado,
             }
+            
+            print(f"Paso 4: Ganador encontrado - {winner['nombre_completo']}")
             return JsonResponse(winner)
         except Personas.DoesNotExist:
+            print(f"Error: Ganador {winner_id} no encontrado para {cliente.nombre}")
             return JsonResponse({"error": "Ganador no encontrado"}, status=404)
         except Exception as e:
+            print(f"Error general: {e}")
             return JsonResponse({"error": str(e)}, status=500)
     return JsonResponse({"error": "Método no permitido"}, status=405)
 
@@ -259,7 +552,27 @@ def send_telegram_message(TELEGRAM_TOKEN, TELEGRAM_CHAT_ID, message):
 @require_http_methods(["POST"])  # Asegura que solo se acepten solicitudes POST
 def reserve_number(request):
     try:
-        print("Paso 1: Iniciando función reserve_number")
+        cliente_token = request.headers.get('X-Cliente-Token')
+        print(f"Paso 1: Token recibido - {cliente_token}")
+        # Validar que el token existe
+        if not cliente_token:
+            print("Error: No se proporcionó X-Cliente-Token en el header")
+            return JsonResponse(
+                {"error": "Se requiere el header X-Cliente-Token."}, 
+                status=400
+            )
+        # PASO 2: Buscar el cliente en la base de datos
+        try:
+            cliente = Cliente.objects.get(token=cliente_token)
+            print(f"Paso 2: Cliente encontrado - {cliente.nombre}")
+        except Cliente.DoesNotExist:
+            print(f"Error: Cliente con token {cliente_token} no encontrado")
+            return JsonResponse(
+                {"error": "Cliente no encontrado."}, 
+                status=404
+            )
+
+        print("Paso 3: Iniciando función reserve_number")
         # Parsear los datos del cuerpo de la solicitud
         data = json.loads(request.body)
         print(f"Paso 2: Datos recibidos - {data}")
@@ -276,13 +589,14 @@ def reserve_number(request):
         # Buscar si ya existe una persona asociada con el número
         number = data["number"]
         print(f"Paso 3: Verificando si el número {number} ya está reservado")
-        if Personas.objects.filter(numero_seleccionado=number).exists():
+        if Personas.objects.filter(cliente=cliente,numero_seleccionado=number).exists():
             print(f"Error: El número {number} ya está reservado.")
-            return JsonResponse({"error": "Este número ya está reservado."}, status=400)
+            return JsonResponse({"error": "Este número ya está reservado."}, status=400)    
 
         # Crear una nueva entrada en la base de datos
         print("Paso 4: Creando nueva entrada en la base de datos")
         persona = Personas(
+            cliente=cliente,  # ← ESTA LÍNEA ES CLAVE
             nombre=data["name"],
             apellido=data["surname"],
             telefono=data.get("phone", ""),  # Opcional
@@ -320,9 +634,33 @@ def reserve_number(request):
 def get_allData(request):
     if request.method == "GET":
         try:
-            # Consulta todos los datos de la tabla Personas
+            # PASO 1: Obtener token del header
+            cliente_token = request.headers.get('X-Cliente-Token')
+            print(f"Paso 1: Token recibido - {cliente_token}")
+            
+            # Validar que el token existe
+            if not cliente_token:
+                print("Error: No se proporcionó X-Cliente-Token en el header")
+                return JsonResponse(
+                    {"error": "Se requiere el header X-Cliente-Token."}, 
+                    status=400
+                )
+            
+            # PASO 2: Buscar el cliente
+            try:
+                cliente = Cliente.objects.get(token=cliente_token)
+                print(f"Paso 2: Cliente encontrado - {cliente.nombre}")
+            except Cliente.DoesNotExist:
+                print(f"Error: Cliente con token {cliente_token} no encontrado")
+                return JsonResponse(
+                    {"error": "Cliente no encontrado."}, 
+                    status=404
+                )
+
+            # PASO 3: Consultar solo las personas de ESTE cliente
+            print("Paso 3: Consultando personas del cliente")
             personas_data = list(
-                Personas.objects.values(
+                Personas.objects.filter(cliente=cliente).values(  # ← FILTRAR POR CLIENTE
                     "id",
                     "nombre",
                     "apellido",
@@ -334,9 +672,73 @@ def get_allData(request):
                     "comentarios",
                 )
             )
+            
+            print(f"Paso 4: Encontradas {len(personas_data)} personas para {cliente.nombre}")
             return JsonResponse(
                 personas_data, safe=False
             )  # Retorna la lista de objetos
+
         except Exception as e:
+            print(f"Error general: {e}")
             return JsonResponse({"error": str(e)}, status=500)
     return JsonResponse({"error": "Método no permitido"}, status=405)
+
+
+def obtener_configuracion_cliente(request):
+    try:
+        cliente_token = request.GET.get('token')
+        
+        # Validar que el token existe
+        if not cliente_token:
+            return JsonResponse(
+                {"error": "Se requiere el parámetro 'token'."}, 
+                status=400
+            )
+        
+        # Buscar el cliente
+        cliente = Cliente.objects.get(token=cliente_token)
+        
+        # Obtener o crear la configuración
+        configuracion, created = ConfiguracionCliente.objects.get_or_create(cliente=cliente)
+        
+        if created:
+            print(f"✅ Configuración creada para cliente: {cliente.nombre}")
+        
+        return JsonResponse({
+            # Cuenta atrás
+            'fecha_final_countdown': configuracion.fecha_final_countdown.isoformat() if configuracion.fecha_final_countdown else None,
+            'horas_extension_countdown': configuracion.horas_extension_countdown,
+            
+            # Apariencia
+            'logo_url': configuracion.logo_url,
+            'logo_base64': configuracion.logo_base64,
+            'color_principal': configuracion.color_principal,
+            'color_secundario': configuracion.color_secundario,
+            
+            # Funcionalidad
+            'mostrar_boton_demo': configuracion.mostrar_boton_demo,
+            'texto_boton_demo': configuracion.texto_boton_demo,
+            'auto_girar_ruleta': configuracion.auto_girar_ruleta,
+            'intervalo_auto_girar': configuracion.intervalo_auto_girar,
+            
+            # Textos
+            'texto_countdown': configuracion.texto_countdown,
+            'texto_ganador': configuracion.texto_ganador,
+            'texto_intentar_otra_vez': configuracion.texto_intentar_otra_vez,
+            
+            # Metadata
+            'creado_en': configuracion.creado_en.isoformat(),
+            'actualizado_en': configuracion.actualizado_en.isoformat(),
+        })
+        
+    except Cliente.DoesNotExist:
+        return JsonResponse(
+            {"error": "Cliente no encontrado."}, 
+            status=404
+        )
+    except Exception as e:
+        print(f"Error en obtener_configuracion_cliente: {e}")
+        return JsonResponse(
+            {"error": "Error interno del servidor."}, 
+            status=500
+        )

@@ -1,89 +1,99 @@
-<!-- CountdownTimer.vue -->
 <template>
-  <div style="display: flex; justify-content: center; margin-bottom: 50px">
-    <p style="color: aliceblue; position: absolute">
-      Empezamos la cuenta atras. Gracias por la paciencia...
-    </p>
-  </div>
-  <div class="countdown">
-    <div class="time-block" v-if="days > 0">
-      <span>{{ days }}</span>
-      <p>Días</p>
+  <div v-if="configuracion.fecha_final_countdown">
+    <div style="display: flex; justify-content: center; margin-bottom: 50px">
+      <p style="color: aliceblue; position: absolute">
+        {{ configuracion.texto_countdown || "Empezamos la cuenta atras. Gracias por la paciencia..." }}
+      </p>
     </div>
-    <div class="time-block" v-if="hours > 0">
-      <span>{{ hours }}</span>
-      <p>Horas</p>
+    <div class="countdown">
+      <div class="time-block" v-if="days > 0">
+        <span>{{ days }}</span>
+        <p>Días</p>
+      </div>
+      <div class="time-block" v-if="hours > 0">
+        <span>{{ hours }}</span>
+        <p>Horas</p>
+      </div>
+      <div class="time-block" v-if="minutes > 0">
+        <span>{{ minutes }}</span>
+        <p>Minutos</p>
+      </div>
+      <div class="time-block">
+        <span>{{ seconds }}</span>
+        <p>Segundos</p>
+      </div>
     </div>
-    <div class="time-block" v-if="minutes > 0">
-      <span>{{ minutes }}</span>
-      <p>Minutos</p>
-    </div>
-    <div class="time-block">
-      <span>{{ seconds }}</span>
-      <p>Segundos</p>
-    </div>
-    <!-- <div class="time-block">
-      <span>{{ miliseconds }}</span>
-      <p>miliseconds</p>
-    </div> -->
+    
+    <!-- Botón demo condicional -->
+    <button 
+      v-if="configuracion.mostrar_boton_demo" 
+      class="demo-btn"
+      :style="{ backgroundColor: configuracion.color_principal }"
+    >
+      {{ configuracion.texto_boton_demo || "Modo Demo" }}
+    </button>
   </div>
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted } from "vue";
 
+// CountdownTimer.vue - Adaptado
+import { ref, onMounted, onUnmounted, computed } from "vue";
+import { api } from "./../boot/axios";
 export default {
   name: "CountdownTimer",
   setup() {
-    const initialTargetDate = new Date("2025-12-21T06:17:00").getTime();
-    const additionalTime = 2 * 60 * 60 * 1000; // 2 horas en milisegundos
-    const targetDate = ref(initialTargetDate);
-    // const fechaFinal=ref(false)
-    const days = ref(0);
-    const hours = ref(0);
-    const minutes = ref(0);
-    const seconds = ref(0);
-    const fraseCuentaAtras = ref(false);
-    let oneTimeLoop = true;
+    const configuracion = ref({})
+    const days = ref(0)
+    const hours = ref(0)
+    const minutes = ref(0)
+    const seconds = ref(0)
+    
+    // Cargar configuración del cliente
+    const cargarConfiguracion = async () => {
+      const response = await api.get(`/api/configuracion-cliente/?token=${CLIENTE_TOKEN}`)
+      configuracion.value = await response.json()
+    }
+    
+    const targetDate = computed(() => {
+      return new Date(configuracion.value.fecha_final_countdown).getTime()
+    })
+    
     const updateCountdown = () => {
-      const now = new Date().getTime();
-      const distance = targetDate.value - now; // Tiempo restante desde ahora
+      if (!configuracion.value.fecha_final_countdown) return
+      
+      const now = new Date().getTime()
+      const distance = targetDate.value - now
 
-      if (distance <= 0 && oneTimeLoop == true) {
-        // Reinicia la cuenta regresiva añadiendo 2 horas
-        targetDate.value += additionalTime;
-        ("añadir solo una vez dos horas");
-        oneTimeLoop = false;
-      } else if (oneTimeLoop != false) {
-        // Actualiza los valores de tiempo restante
-        days.value = Math.floor(distance / (1000 * 60 * 60 * 24));
-        hours.value = Math.floor(
-          (distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
-        );
-        minutes.value = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-        seconds.value = Math.floor((distance % (1000 * 60)) / 1000);
+      if (distance <= 0) {
+        // Extender countdown si está configurado
+        if (configuracion.value.horas_extension_countdown) {
+          // Lógica para extender (podría manejarse en backend)
+        }
+      } else {
+        days.value = Math.floor(distance / (1000 * 60 * 60 * 24))
+        hours.value = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+        minutes.value = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))
+        seconds.value = Math.floor((distance % (1000 * 60)) / 1000)
       }
-    };
+    }
 
-    let countdownInterval;
-    onMounted(() => {
-      updateCountdown(); // Inicia el conteo al montar el componente
-      countdownInterval = setInterval(updateCountdown, 1000); // Actualiza cada segundo
-    });
-
-    onUnmounted(() => {
-      clearInterval(countdownInterval); // Limpia el intervalo al desmontar
-    });
+    onMounted(async () => {
+      await cargarConfiguracion()
+      if (configuracion.value.fecha_final_countdown) {
+        setInterval(updateCountdown, 1000)
+      }
+    })
 
     return {
       days,
       hours,
       minutes,
       seconds,
-      fraseCuentaAtras,
-    };
-  },
-};
+      configuracion
+    }
+  }
+}
 </script>
 
 <style scoped>
