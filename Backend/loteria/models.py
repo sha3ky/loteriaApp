@@ -33,6 +33,7 @@ class Personas(models.Model):
 
 # Nuevo modelo para productos
 class Producto(models.Model):
+    cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE)  # ← NUEVO
     nombre = models.CharField(max_length=100, null=True, blank=True)
     descripcion = models.TextField(null=True, blank=True)
     cantidad = models.IntegerField(null=True, blank=True)
