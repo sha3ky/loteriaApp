@@ -669,7 +669,6 @@ def get_allData(request):
                     "creado_en",
                     "numero_seleccionado",
                     "correo",
-                    "descripcion",
                     "comentarios",
                 )
             )

@@ -42,9 +42,6 @@ class Personas(models.Model):
         validators=[MinValueValidator(1), MaxValueValidator(100)]
     )  # Número de 1 a 100
     correo = models.EmailField()  # Campo para el correo electrónico
-    descripcion = models.TextField(
-        max_length=500, blank=True
-    )  # Campo para una descripción (hasta 500 caracteres)
     comentarios = models.TextField(
         max_length=500, blank=True
     )  # Campo para comentarios (hasta 500 caracteres)

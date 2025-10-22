@@ -13,7 +13,7 @@ const api = axios.create({
 // Interceptor de request para agregar token automáticamente
 api.interceptors.request.use((config) => {
   const CLIENT_TOKEN = "La_mata1985"; // Token hardcodeado
-
+  /* const CLIENT_TOKEN = "dejavu2025"; */
   // Agregar token como header para TODAS las requests
   config.headers["X-Cliente-Token"] = CLIENT_TOKEN;
 

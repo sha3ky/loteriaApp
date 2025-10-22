@@ -144,7 +144,6 @@ export default {
         });
         return;
       }
-      debugger;
       const payload = {
         number: selectedNumber.value,
         name: formData.value.name,

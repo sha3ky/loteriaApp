@@ -1,141 +1,255 @@
 <template>
   <q-page class="q-pa-md">
-    <q-table
-      :dense="$q.screen.lt.md"
-      title="Participantes"
-      :rows="allDataTable"
-      :columns="columns"
-      row-key="id"
-      flat
-      bordered
-      class="q-pa-md q-table"
-      style="table-layout: fixed; width: 100%"
-      :separator="separator"
-      v-model:pagination="pagination"
-      :rows-per-page-options="[5, 10, 20, 50, 99]"
-      :rows-per-page="10"
-      @row-click="openEditDialog"
-    >
-      <template v-slot:body="props">
-        <q-tr :props="props" @click="openEditDialog(props.row)">
-          <q-td v-for="col in columns" :key="col.name" :props="props">
-            {{ props.row[col.field] }}
-          </q-td>
-        </q-tr>
-      </template>
-    </q-table>
-    <q-dialog v-model="isDialogOpen" persistent>
-      <q-card style="width: 400px">
-        <q-card-section>
-          <div class="text-h6">Editar Participante</div>
-        </q-card-section>
-        <q-card-section>
-          <q-input v-model="editableRow.nombre" label="Nombre" dense></q-input>
-          <q-input
-            v-model="editableRow.apellido"
-            label="Apellido"
-            dense
-          ></q-input>
-          <q-input
-            v-model="editableRow.telefono"
-            label="Teléfono"
-            dense
-          ></q-input>
-          <q-input v-model="editableRow.correo" label="Correo" dense></q-input>
-          <!-- <q-input
+    <div class="q-gutter-y-md" style="display: flex; justify-content: center">
+      <q-tabs v-model="tab" class="text-gray">
+        <q-tab name="participants" icon="people" label="Participantes" />
+        <q-tab name="settings" icon="settings" label="Configuración" />
+        <q-tab name="products" icon="inventory" label="Productos" />
+      </q-tabs>
+    </div>
+
+    <q-tab-panels v-model="tab" animated>
+      <!-- TAB CONFIGURACIÓN -->
+      <q-tab-panel name="settings">
+        <q-toggle
+          v-model="configuracion.mostrar_boton_demo"
+          color="green"
+          label="Mostrar botón demo"
+        />
+
+        <q-toggle
+          v-model="configuracion.auto_girar_ruleta"
+          color="green"
+          label="Auto-girar ruleta"
+        />
+
+        <!-- Para los textos usa inputs -->
+        <q-input
+          v-model="configuracion.texto_countdown"
+          label="Texto del countdown"
+          filled
+        />
+
+        <q-input
+          v-model="configuracion.texto_ganador"
+          label="Texto del ganador"
+          filled
+        />
+
+        <q-input
+          v-model="configuracion.texto_intentar_otra_vez"
+          label="Texto intentar otra vez"
+          filled
+        />
+
+        <q-input
+          v-model="configuracion.texto_boton_demo"
+          label="Texto botón demo"
+          filled
+        />
+
+        <!-- Para colores usa color picker -->
+        <q-input
+          v-model="configuracion.color_principal"
+          label="Color principal"
+          filled
+        >
+          <template v-slot:append>
+            <q-icon name="colorize" class="cursor-pointer">
+              <q-popup-proxy>
+                <q-color v-model="configuracion.color_principal" />
+              </q-popup-proxy>
+            </q-icon>
+          </template>
+        </q-input>
+
+        <q-input
+          v-model="configuracion.color_secundario"
+          label="Color secundario"
+          filled
+        >
+          <template v-slot:append>
+            <q-icon name="colorize" class="cursor-pointer">
+              <q-popup-proxy>
+                <q-color v-model="configuracion.color_secundario" />
+              </q-popup-proxy>
+            </q-icon>
+          </template>
+        </q-input>
+
+        <!-- Para números -->
+        <q-input
+          v-model="configuracion.horas_extension_countdown"
+          label="Horas extensión countdown"
+          type="number"
+          filled
+        />
+
+        <q-input
+          v-model="configuracion.intervalo_auto_girar"
+          label="Intervalo auto-girar (segundos)"
+          type="number"
+          filled
+        />
+      </q-tab-panel>
+
+      <!-- TAB PRODUCTOS -->
+      <q-tab-panel name="products">
+        <div class="admin-container">
+          <!-- Columna del Formulario -->
+          <div class="form-column">
+            <div class="form-wrapper">
+              <h5>Añadir Producto</h5>
+              <form @submit.prevent="uploadProduct">
+                <label>
+                  Nombre:
+                  <input v-model="product.nombre" type="text" required />
+                </label>
+                <label>
+                  Descripción:
+                  <textarea v-model="product.descripcion" required></textarea>
+                </label>
+                <label>
+                  Precio:
+                  <input v-model="product.precio" type="number" />
+                </label>
+                <label>
+                  Cantidad:
+                  <input v-model="product.cantidad" type="number" />
+                </label>
+                <label>
+                  Imagen:
+                  <input
+                    type="file"
+                    @change="handleImageUpload"
+                    id="miFileInput"
+                  />
+                </label>
+                <div class="button-container">
+                  <button type="submit">Subir Producto</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Columna de Productos -->
+          <div class="products-column">
+            <h5>Lista de Productos</h5>
+            <div class="products-grid">
+              <div
+                v-for="product in products"
+                :key="product.id"
+                class="product-card"
+              >
+                <img
+                  :src="product.imagen_base64"
+                  alt="Imagen del producto"
+                  class="product-image"
+                />
+                <div class="product-info">
+                  <h6>{{ product.nombre }}</h6>
+                  <p>{{ product.descripcion }}</p>
+                  <div class="product-actions">
+                    <button @click="deleteProduct(product.id)">Eliminar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </q-tab-panel>
+
+      <!-- TAB PARTICIPANTES -->
+      <q-tab-panel name="participants">
+        <q-table
+          :dense="$q.screen.lt.md"
+          title="Participantes"
+          :rows="allDataTable"
+          :columns="columns"
+          row-key="id"
+          flat
+          bordered
+          class="q-pa-md q-table"
+          style="table-layout: fixed; width: 100%"
+          :separator="separator"
+          v-model:pagination="pagination"
+          :rows-per-page-options="[5, 10, 20, 50, 99]"
+          :rows-per-page="10"
+          @row-click="openEditDialog"
+        >
+          <template v-slot:body="props">
+            <q-tr :props="props" @click="openEditDialog(props.row)">
+              <q-td v-for="col in columns" :key="col.name" :props="props">
+                {{ props.row[col.field] }}
+              </q-td>
+            </q-tr>
+          </template>
+        </q-table>
+        <q-dialog v-model="isDialogOpen" persistent>
+          <q-card style="width: 400px">
+            <q-card-section style="background-color: firebrick">
+              <div>
+                <h5 style="margin: 0px; padding: 0px">
+                  <span style="color: white">Participante</span>
+                </h5>
+              </div>
+            </q-card-section>
+            <q-card-section>
+              <q-input
+                v-model="editableRow.nombre"
+                label="Nombre"
+                dense
+              ></q-input>
+              <q-input
+                v-model="editableRow.apellido"
+                label="Apellido"
+                dense
+              ></q-input>
+              <q-input
+                v-model="editableRow.telefono"
+                label="Teléfono"
+                dense
+              ></q-input>
+              <q-input
+                v-model="editableRow.correo"
+                label="Correo"
+                dense
+              ></q-input>
+              <!--   <q-input
             v-model="editableRow.numero_seleccionado"
             label="Número Seleccionado"
             dense
             type="number"
           ></q-input> -->
-          <q-input
+              <!--  <q-input
             v-model="editableRow.descripcion"
             label="Descripción"
             dense
             type="textarea"
-          />
-          <q-input
-            v-model="editableRow.comentarios"
-            label="Comentarios"
-            dense
-            type="textarea"
-          />
-          <div style="text-align: center; padding: 5px">
-            <q-btn
-              class="glossy"
-              rounded
-              color="deep-orange"
-              label="Eliminar"
-              @click="eliminarPersonaTabla"
-            />
-          </div>
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="Cancelar" color="negative" @click="closeDialog" />
-          <q-btn
-            flat
-            label="Guardar"
-            color="positive"
-            @click="updateRowTabla"
-          />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-    <div class="container">
-      <div class="form-wrapper">
-        <h5 style="margin: 5px">Subir Producto</h5>
-        <form @submit.prevent="uploadProduct">
-          <label>
-            Nombre:
-            <input v-model="product.nombre" type="text" required />
-          </label>
-          <label>
-            Descripción:
-            <textarea v-model="product.descripcion" required></textarea>
-          </label>
-          <label>
-            Precio:
-            <input v-model="product.precio" type="number" />
-          </label>
-          <label>
-            Cantidad:
-            <input v-model="product.cantidad" type="number" />
-          </label>
-          <label>
-            Imagen:
-            <input type="file" @change="handleImageUpload" id="miFileInput" />
-          </label>
-          <div style="text-align: center">
-            <button style="margin: 0px" type="submit">Subir Producto</button>
-          </div>
-        </form>
-      </div>
-    </div>
-    <div>
-      <h5 style="margin: 5px">Lista de Productos</h5>
-      <ul>
-        <li
-          v-for="product in products"
-          :key="product.id"
-          style="display: inline-grid"
-        >
-          <div style="display: block">
-            <div style="text-align: center">{{ product.nombre }}</div>
-            <div style="text-align: center">{{ product.descripcion }}</div>
-          </div>
+          /> -->
+              <q-input
+                v-model="editableRow.comentarios"
+                label="Comentarios"
+                dense
+                type="textarea"
+              />
+              <div style="text-align: center; padding: 5px">
+                <q-btn
+                  style="color: firebrick"
+                  label="Eliminar"
+                  @click="eliminarPersonaTabla"
+                />
+              </div>
+            </q-card-section>
+            <q-card-actions align="right">
+              <q-btn label="Cancelar" color="negative" @click="closeDialog" />
+              <q-btn label="Guardar" color="positive" @click="updateRowTabla" />
+            </q-card-actions>
+          </q-card>
+        </q-dialog>
+      </q-tab-panel>
+    </q-tab-panels>
 
-          <div style="text-align: center">
-            <button @click="deleteProduct(product.id)">Eliminar</button>
-          </div>
-
-          <img
-            style="height: 100px; width: 100px"
-            :src="product.imagen_base64"
-            alt="Imagen del producto"
-          />
-        </li>
-      </ul>
-    </div>
     <div style="text-align: center">
       <q-btn
         flat
@@ -161,6 +275,8 @@ import { useQuasar } from "quasar";
 export default {
   name: "EditableTable",
   setup() {
+    const configuracion = ref({});
+    const tab = ref("participants");
     const product = reactive({
       nombre: "",
       descripcion: "",
@@ -216,7 +332,7 @@ export default {
         align: "center",
         field: "numero_seleccionado",
         sortable: true,
-        width: "15px",
+        width: "10px",
       },
       {
         name: "correo",
@@ -224,12 +340,12 @@ export default {
         align: "left",
         field: "correo",
       },
-      {
+      /*   {
         name: "descripcion",
         label: "Descripción",
         align: "left",
         field: "descripcion",
-      },
+      }, */
       {
         name: "comentarios",
         label: "Comentarios",
@@ -395,6 +511,15 @@ export default {
     };
 
     // Function para hacer el update a la tabla
+    const cargarConfiguracion = async () => {
+      try {
+        const response = await api.get("/api/configuracion-cliente/");
+        configuracion.value = response.data;
+      } catch (error) {
+        console.error("❌ Error completo:", error.response?.data);
+        // Muestra el mensaje específico del backend
+      }
+    };
 
     const updateRowTabla = async () => {
       try {
@@ -491,7 +616,8 @@ export default {
       }
       loadProductosBBDD();
       loadPersonasTabla(); // Llamada inicial
-      intervalId = setInterval(loadPersonasTabla, updateInterval);
+      /* intervalId = setInterval(loadPersonasTabla, updateInterval); */
+      cargarConfiguracion();
     });
 
     onUnmounted(() => {
@@ -520,6 +646,8 @@ export default {
       pagination,
       volverHome,
       eliminarPersonaTabla,
+      tab,
+      configuracion,
     };
   },
 };
@@ -567,8 +695,142 @@ form button {
 form button:hover {
   background-color: #45a049;
 }
-</style>
 
-<style scoped>
-/* Contenedor principal */
+/* añadir productos css */
+
+.admin-container {
+  display: grid;
+  grid-template-columns: 1fr 2fr; /* Form 33%, Products 66% */
+  gap: 20px;
+  height: 100vh;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+/* Columna del Formulario */
+.form-column {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.form-wrapper {
+  height: 100%;
+}
+
+.form-wrapper h5 {
+  margin: 0 0 20px 0;
+  text-align: center;
+  color: #333;
+}
+
+.form-wrapper form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.form-wrapper label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-weight: 500;
+  color: #555;
+}
+
+.form-wrapper input,
+.form-wrapper textarea {
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.form-wrapper textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.button-container {
+  text-align: center;
+  margin-top: 10px;
+}
+
+.form-wrapper button {
+  padding: 12px 30px;
+  background: #1976d2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* Columna de Productos */
+.products-column {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.products-column h5 {
+  margin: 0 0 20px 0;
+  color: #333;
+}
+
+.products-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.product-card {
+  background: white;
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.product-image {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.product-info h6 {
+  margin: 0 0 8px 0;
+  color: #333;
+}
+
+.product-info p {
+  margin: 0 0 10px 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.product-actions button {
+  padding: 8px 16px;
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .admin-container {
+    grid-template-columns: 1fr;
+    height: auto;
+    padding: 10px;
+  }
+
+  .products-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+}
 </style>
