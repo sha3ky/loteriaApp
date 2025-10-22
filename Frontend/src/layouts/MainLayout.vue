@@ -106,6 +106,7 @@ import NumbersSquares from "src/components/NumbersSquares.vue";
 import { useLayoutStore } from "../stores/layoutStore";
 import { useRouter } from "vue-router";
 import { useQuasar } from "quasar";
+import { api } from 'boot/axios';
 export default defineComponent({
   name: "MainLayout",
   components: {
@@ -143,9 +144,10 @@ export default defineComponent({
     };
 
   const accessAdmin = async () => {
+    debugger
   try {
     // ✅ Usar axios en lugar del mixin
-    const response = await this.$api.post("/api/token/", {
+    const response = await api.post("/api/token/", {
       username: formData.value.username,
       password: formData.value.password,
       // cliente_token: "La_mata1985" // ← NO necesario, se agrega AUTOMÁTICAMENTE en el interceptor

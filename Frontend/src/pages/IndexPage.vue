@@ -100,7 +100,9 @@
               </div>
               <div class="sign-container">
                 <div class="sign">
-                  <span class="fast-flicker">Fe</span>lic<span class="flicker">id</span>ad<span class="fast-flicker">es</span>
+                  <span class="fast-flicker">Fe</span>lic<span class="flicker"
+                    >id</span
+                  >ad<span class="fast-flicker">es</span>
                 </div>
               </div>
             </div>
@@ -110,8 +112,11 @@
               </div>
             </div>
           </q-card-section>
-          
-          <q-card-actions align="center" class="dialog-actions bg-white text-teal">
+
+          <q-card-actions
+            align="center"
+            class="dialog-actions bg-white text-teal"
+          >
             <q-btn flat label="Cerrar" v-close-popup class="close-btn" />
           </q-card-actions>
         </q-card>
@@ -137,7 +142,7 @@ import clickSound from "../sounds/click.wav";
 import hoverSound from "../sounds/hover.wav";
 import leaveSound from "../sounds/hover.wav";
 import spinningSound from "../sounds/spinning2.wav";
-
+import { api } from "boot/axios";
 export default defineComponent({
   name: "IndexPage",
   components: {
@@ -168,8 +173,7 @@ export default defineComponent({
     });
 
     watch(winnerResult, async (newValue) => {
-      
-     /*  showConfetti.value = newValue !== null; */
+      /*  showConfetti.value = newValue !== null; */
       // miramos el newValue y si no es vacio llamamos al nombre del ganador
       if (newValue !== null) {
         await searchWinner(); // Llamar a la función asíncrona aquí
@@ -177,7 +181,6 @@ export default defineComponent({
     });
 
     const handleSpinButtonClick = () => {
-      
       stopAllSounds(); // Detener todos los sonidos antes de iniciar el giro
       if (
         !isSpinning.value &&
@@ -206,28 +209,27 @@ export default defineComponent({
     };
 
     const searchWinner = async () => {
-      
-       nombreGanador.value=""
+      nombreGanador.value = "";
       try {
         // para testear solo
 
-        const response = await fetch(
-          `${BASE_URL}/api/get-winner/${winnerResult.value.text}/`
+        const response = await api.get(
+          `/api/get-winner/${winnerResult.value.text}/`
         );
 
         if (response.ok) {
           const winner = await response.json();
           nombreGanador.value = winner.nombre_completo;
           isDialogOpen.value = true;
-       
-        // Reproduce el sonido de winning
-        playAudio(sounds.value.won);
-        // Muestra confetti mientras suena el audio de winning
-        showConfetti.value = true;
-        // Escucha cuando el sonido de 'won' termina y luego apaga el confetti
-        sounds.value.won.onended = () => {
-          showConfetti.value = false;
-        };
+
+          // Reproduce el sonido de winning
+          playAudio(sounds.value.won);
+          // Muestra confetti mientras suena el audio de winning
+          showConfetti.value = true;
+          // Escucha cuando el sonido de 'won' termina y luego apaga el confetti
+          sounds.value.won.onended = () => {
+            showConfetti.value = false;
+          };
         } else {
           console.error("Error al obtener el estado de los números.");
           isDialogOpen.value = true;
@@ -248,7 +250,6 @@ export default defineComponent({
     };
 
     const onSpinEnd = (winnerIndex) => {
-      
       console.log("onspinEnd", winnerIndex);
       // Detener el sonido de spinning antes de reproducir el sonido de winning
       if (sounds.value.spinning) {
@@ -280,7 +281,7 @@ export default defineComponent({
       sounds.value.spinButtonHover = new Audio(hoverSound);
       sounds.value.spinButtonLeave = new Audio(leaveSound);
       sounds.value.spinning = new Audio(spinningSound);
-      sounds.value.lose=new Audio(loseSound)
+      sounds.value.lose = new Audio(loseSound);
     });
 
     return {
@@ -364,7 +365,8 @@ body {
   padding: 20px;
 }
 
-.winner-section, .try-again-section {
+.winner-section,
+.try-again-section {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -373,7 +375,8 @@ body {
   flex: 1;
 }
 
-.winner-title, .try-again-title {
+.winner-title,
+.try-again-title {
   text-transform: uppercase;
   margin-bottom: 20px;
   word-wrap: break-word;
@@ -426,12 +429,13 @@ body {
     width: 90vw;
     min-height: 50vh;
   }
-  
+
   .sign {
     font-size: 1.8em;
   }
-  
-  .winner-title, .try-again-title {
+
+  .winner-title,
+  .try-again-title {
     font-size: 1.1em;
   }
 }
@@ -440,7 +444,7 @@ body {
   .sign {
     font-size: 1.5em;
   }
-  
+
   .dialog-content {
     padding: 15px;
   }

@@ -46,7 +46,7 @@
 
 <script>
 import { ref, onMounted, onUnmounted } from "vue";
-import { api } from 'boot/axios';
+import { api } from "boot/axios";
 import { toRaw } from "vue";
 import { Notify } from "quasar";
 export default {
@@ -69,20 +69,17 @@ export default {
     const updateInterval = 5000; // 5 segundos
     let intervalId = null;
 
-
-
     const fetchStatusUpdate = async () => {
       try {
         // ✅ Usar axios en lugar de apiCall
-        const response = await api.get('/api/number-status/');
+        const response = await api.get("/api/number-status/");
         // Con axios, response.ok no existe - la respuesta viene directamente
         const updatedStatus = response.data; // ← Los datos vienen en .data
         status.value = updatedStatus;
         console.log("✅ Estado actualizado:", updatedStatus);
-        
       } catch (error) {
         console.error("🚨 Error al actualizar el estado:", error);
-        
+
         // Manejo de errores con axios
         if (error.response) {
           // El servidor respondió con un código de error
@@ -159,7 +156,7 @@ export default {
       };
 
       try {
-        const response = await fetch(`${BASE_URL}/api/reserve-number/`, {
+        const response = await api.get("/api/reserve-number/", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -256,7 +253,7 @@ export default {
 }
 
 .square.green {
-  background-color: #008000d1;;
+  background-color: #008000d1;
 }
 
 .q-dialog {

@@ -152,13 +152,11 @@
 
 <script>
 import { ref, onMounted, onUnmounted, reactive } from "vue";
-import BASE_URL from "../variosJs/config";
+/* import BASE_URL from "../variosJs/config"; */
 // import { toRaw } from "vue";
 import { useRouter } from "vue-router";
-import { api } from "./../boot/axios";
+import { api } from "boot/axios";
 import { useQuasar } from "quasar";
-// import { getPosts } from "../variosJs/post-loader";
-import axios from "axios";
 
 export default {
   name: "EditableTable",
@@ -253,9 +251,7 @@ export default {
         .onOk(async () => {
           // Si el usuario confirma, elimina el producto
           try {
-            const response = await axios.delete(
-              `${BASE_URL}/api/productos/${productId}/`
-            );
+            const response = await api.delete(`/api/productos/${productId}/`);
             if (response.status === 200) {
               $q.notify({
                 type: "positive",
@@ -287,7 +283,7 @@ export default {
 
     const loadProductosBBDD = async () => {
       try {
-        const response = await axios.get(`${BASE_URL}/api/getproductos/`);
+        const response = await api.get("/api/getproductos/");
         if (response.status === 200) {
           products.value = response.data; // Cargar productos en la lista
         }
@@ -318,7 +314,7 @@ export default {
     const uploadProduct = async () => {
       try {
         const base64Image = await convertToBase64(product.imagen);
-        const response = await axios.post(`${BASE_URL}/api/productos/`, {
+        const response = await api.post("/api/productos/", {
           nombre: product.nombre,
           descripcion: product.descripcion,
           cantidad: product.cantidad,
@@ -399,7 +395,7 @@ export default {
     const updateRowTabla = async () => {
       try {
         const response = await api.put(
-          `${BASE_URL}/api/personas/${editableRow.value.id}/`,
+          `/api/personas/${editableRow.value.id}/`,
           editableRow.value
         );
         if (response.status === 200) {
@@ -449,14 +445,8 @@ export default {
 
     const loadPersonasTabla = async () => {
       try {
-        const response = await fetch(`${BASE_URL}/api/get-allData/`);
-
-        if (response.ok) {
-          const updatedStatus = await response.json();
-          allDataTable.value = updatedStatus;
-        } else {
-          console.error("Error al obtener el estado de los números.");
-        }
+        const response = await api.get("/api/get-allData/");
+        allDataTable.value = response.data;
       } catch (error) {
         console.error("Error al actualizar el estado:", error);
       }
@@ -466,8 +456,8 @@ export default {
 
     const eliminarPersonaTabla = async () => {
       try {
-        const response = await fetch(
-          `${BASE_URL}/api/delete-user/${editableRow.value.id}/`,
+        const response = await api.get(
+          `/api/delete-user/${editableRow.value.id}/`,
           {
             method: "DELETE",
           }
@@ -505,7 +495,6 @@ export default {
     });
 
     return {
-      baseUrl: BASE_URL,
       resetForm,
       deleteProduct,
       loadProductosBBDD,

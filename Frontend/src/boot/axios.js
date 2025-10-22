@@ -21,10 +21,11 @@ api.interceptors.request.use((config) => {
   config.headers['X-Cliente-Token'] = CLIENT_TOKEN
   
   // Para GET, también agregar como parámetro (backward compatibility)
-  if (config.method === 'get' && config.params) {
+/*   if (config.method === 'get' && config.params) {
     config.params.token = CLIENT_TOKEN
   }
-  
+   */
+ /*  console.log('🔍 Headers que se envían:', config.headers) */
   console.log(`🚀 ${config.method?.toUpperCase()} ${config.url}`, config.params || config.data)
   return config
 })
@@ -43,7 +44,7 @@ api.interceptors.response.use(
       // Redirigir a login si el token expira
       localStorage.removeItem('accessToken')
       localStorage.removeItem('refreshToken')
-      window.location.href = '/login'
+    /*   window.location.href = '/login' */
     }
     
     return Promise.reject(error)
