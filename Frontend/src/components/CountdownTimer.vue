@@ -45,7 +45,15 @@ import { api } from "boot/axios";
 export default {
   name: "CountdownTimer",
   setup() {
-    const configuracion = ref({});
+    const configuracion = ref({
+      fecha_final_countdown: null,
+      horas_extension_countdown: 2,
+      mostrar_boton_demo: true,
+      texto_boton_demo: "🎮 Modo Demo",
+      texto_countdown: "⏰ ¡El sorteo comenzará en...!",
+      creado_en: new Date().toISOString(),
+      actualizado_en: new Date().toISOString(),
+    });
     const days = ref(0);
     const hours = ref(0);
     const minutes = ref(0);
@@ -54,14 +62,14 @@ export default {
     // Cargar configuración del cliente
     const cargarConfiguracion = async () => {
       try {
-        // ✅ Usar axios - el token se agrega AUTOMÁTICAMENTE
         const response = await api.get("/api/configuracion-cliente/");
-        configuracion.value = response.data; // ← response.data con axios
-        console.log("✅ Configuración cargada:", response.data);
+        configuracion.value = response.data;
       } catch (error) {
-        console.error("❌ Error cargando configuración:", error);
+        console.error("❌ Error completo:", error.response?.data);
+        // Muestra el mensaje específico del backend
       }
     };
+
     const targetDate = computed(() => {
       return new Date(configuracion.value.fecha_final_countdown).getTime();
     });

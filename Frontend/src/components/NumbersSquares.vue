@@ -76,7 +76,6 @@ export default {
         // Con axios, response.ok no existe - la respuesta viene directamente
         const updatedStatus = response.data; // ← Los datos vienen en .data
         status.value = updatedStatus;
-        console.log("✅ Estado actualizado:", updatedStatus);
       } catch (error) {
         console.error("🚨 Error al actualizar el estado:", error);
 
@@ -108,7 +107,6 @@ export default {
     // Función para abrir el diálogo
     const openDialog = (number) => {
       if (isNumberGreen(number)) {
-        console.log("Número seleccionado:", number);
         // console.log("Estado actual:", toRaw(status.value));
         const toRawStatus = toRaw(status.value);
         const filteredStatus = Object.values(toRawStatus).find(
@@ -146,7 +144,7 @@ export default {
         });
         return;
       }
-
+      debugger;
       const payload = {
         number: selectedNumber.value,
         name: formData.value.name,
@@ -156,15 +154,9 @@ export default {
       };
 
       try {
-        const response = await api.get("/api/reserve-number/", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
-        });
+        const response = await api.post("/api/reserve-number/", payload);
 
-        if (response.ok) {
+        if (response.data.message) {
           Notify.create({
             message: "Número reservado exitosamente.",
             color: "positive",

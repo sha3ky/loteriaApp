@@ -34,7 +34,13 @@
       </q-toolbar>
     </q-header>
 
-    <q-drawer v-model="leftDrawerOpen" side="left" behavior="mobile" elevated style="width: 50vh;">
+    <q-drawer
+      v-model="leftDrawerOpen"
+      side="left"
+      behavior="mobile"
+      elevated
+      style="width: 50vh"
+    >
       <div style="justify-content: flex-end; display: flex; padding: 10px">
         <q-btn
           outline
@@ -47,21 +53,23 @@
 
       <q-list>
         <q-item-label header>
-          <h5 style="padding: 0; margin: 0;text-align: center;">Cesta de Regalos</h5>
+          <h5 style="padding: 0; margin: 0; text-align: center">
+            Cesta de Regalos
+          </h5>
         </q-item-label>
         <InfiniteScrollComponent />
       </q-list>
     </q-drawer>
 
-    <q-drawer v-model="rightDrawerOpen" side="right" behavior="mobile" bordered style="width: 50vh;">
+    <q-drawer
+      v-model="rightDrawerOpen"
+      side="right"
+      behavior="mobile"
+      bordered
+      style="width: 50vh"
+    >
       <!-- <NumbersSquares :databaseStatus="numbersStatus" /> -->
-      <div
-        style="
-          justify-content: flex-start;
-          display: flex;
-          padding: 10px;
-        "
-      >
+      <div style="justify-content: flex-start; display: flex; padding: 10px">
         <q-btn
           outline
           round
@@ -106,7 +114,7 @@ import NumbersSquares from "src/components/NumbersSquares.vue";
 import { useLayoutStore } from "../stores/layoutStore";
 import { useRouter } from "vue-router";
 import { useQuasar } from "quasar";
-import { api } from 'boot/axios';
+import { api } from "boot/axios";
 export default defineComponent({
   name: "MainLayout",
   components: {
@@ -125,17 +133,64 @@ export default defineComponent({
       username: "",
       password: "",
     });
-    const countClick = ref(0);
+    const countClick = ref([]);
     const router = useRouter();
 
     // click en la tombola pequeña statica
+    // **Asumo que 'countClick' es una referencia reactiva (ej. ref() en Vue o similar)**
+    // **y que 'isDialogOpen' también es una referencia reactiva.**
+
     const handleClick = () => {
-      countClick.value++;
-      if (countClick.value === 5) {
+      // 1. REGISTRO DEL CLIC:
+      // En lugar de guardar '1', guardamos la marca de tiempo actual (en milisegundos)
+      const timestampActual = Date.now();
+      countClick.value.push(timestampActual);
+
+      // Ejecutamos la comprobación inmediatamente después de un clic,
+      // en lugar de esperar al setInterval, para una respuesta más rápida.
+      comprobarCountClick();
+    };
+
+    const comprobarCountClick = () => {
+      const LIMITE_TIEMPO_MS = 5000; // 5 segundos en milisegundos
+      const LIMITE_CLICS = 5;
+
+      // Obtener la hora actual para definir el final de la ventana de tiempo
+      const tiempoAhora = Date.now();
+
+      // **1. LIMPIEZA:**
+      // Filtramos el array para mantener SOLO los clics que ocurrieron
+      // dentro de los últimos 5 segundos (LIMITE_TIEMPO_MS).
+      // NOTA: Esto no es ideal si countClick.value es una referencia mutada.
+      // Una opción más legible y común es reasignar el array filtrado:
+
+      const clicsRecientes = countClick.value.filter((timestamp) => {
+        // Un clic es 'reciente' si su marca de tiempo es mayor que
+        // (Tiempo Actual - 5000ms)
+        return timestamp > tiempoAhora - LIMITE_TIEMPO_MS;
+      });
+
+      // Reasignamos el array limpio. Esto implementa la 'ventana deslizante'.
+      countClick.value = clicsRecientes;
+
+      // **2. COMPROBACIÓN DEL LÍMITE:**
+      // Verificamos si la cantidad de clics recientes supera el límite
+      if (countClick.value.length > LIMITE_CLICS) {
+        // ¡Límite excedido!
         isDialogOpen.value = true;
-        countClick.value = 0;
+
+        // Opcional: Reiniciamos la cuenta inmediatamente para evitar que
+        // se siga abriendo el diálogo en el siguiente clic.
+        countClick.value = [];
       }
     };
+
+    // **3. EL TEMPORIZADOR:**
+    // El setInterval ahora tiene un propósito secundario:
+    // Limpiar periódicamente el array para liberar memoria,
+    // aunque la comprobación principal se hace en handleClick.
+    // Podemos hacerlo más lento ya que ya no es el motor principal.
+    setInterval(comprobarCountClick, 1000); // Se ejecuta cada 1 segundo para limpieza y mantenimiento
     // click al cerrar el dialogo
     const closeDialog = () => {
       isDialogOpen.value = false;
@@ -143,59 +198,60 @@ export default defineComponent({
       formData.value.password = "";
     };
 
-  const accessAdmin = async () => {
-    debugger
-  try {
-    // ✅ Usar axios en lugar del mixin
-    const response = await api.post("/api/token/", {
-      username: formData.value.username,
-      password: formData.value.password,
-      // cliente_token: "La_mata1985" // ← NO necesario, se agrega AUTOMÁTICAMENTE en el interceptor
-    });
-
-    // Verify if the tokens exist
-    const { access, refresh } = response.data; // ← response.data con axios
-    if (access && refresh) {
-      // Store tokens in localStorage
-      localStorage.setItem("accessToken", access);
-      localStorage.setItem("refreshToken", refresh);
-      
+    const accessAdmin = async () => {
       try {
-        console.log(router);
-        router.push("/adminpage");
-        closeDialog();
+        // ✅ Usar axios en lugar del mixin
+        const response = await api.post("/api/token/", {
+          username: formData.value.username,
+          password: formData.value.password,
+          // cliente_token: "La_mata1985" // ← NO necesario, se agrega AUTOMÁTICAMENTE en el interceptor
+        });
+
+        // Verify if the tokens exist
+        const { access, refresh } = response.data; // ← response.data con axios
+        if (access && refresh) {
+          // Store tokens in localStorage
+          localStorage.setItem("accessToken", access);
+          localStorage.setItem("refreshToken", refresh);
+
+          try {
+            console.log(router);
+            router.push("/adminpage");
+            closeDialog();
+          } catch (error) {
+            console.error("Navigation failed:", error);
+          }
+        } else {
+          throw new Error("Invalid token response from the server.");
+        }
       } catch (error) {
-        console.error("Navigation failed:", error);
+        console.error("Login error:", error);
+
+        // Handle different error statuses
+        if (error.response?.status === 401) {
+          // ← error.response con axios
+          $q.notify({
+            type: "negative",
+            message:
+              "Credenciales incorrectas. Por favor, verifica tu usuario y contraseña.",
+          });
+        } else if (error.response?.status === 400) {
+          $q.notify({
+            type: "negative",
+            message: "Solicitud incorrecta. Revisa los datos ingresados.",
+          });
+        } else {
+          $q.notify({
+            type: "negative",
+            message: "Error en el servidor. Intenta nuevamente más tarde.",
+          });
+        }
+
+        // Clear stored tokens in case of error
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
       }
-    } else {
-      throw new Error("Invalid token response from the server.");
-    }
-  } catch (error) {
-    console.error("Login error:", error);
-
-    // Handle different error statuses
-    if (error.response?.status === 401) { // ← error.response con axios
-      $q.notify({
-        type: "negative",
-        message: "Credenciales incorrectas. Por favor, verifica tu usuario y contraseña.",
-      });
-    } else if (error.response?.status === 400) {
-      $q.notify({
-        type: "negative",
-        message: "Solicitud incorrecta. Revisa los datos ingresados.",
-      });
-    } else {
-      $q.notify({
-        type: "negative",
-        message: "Error en el servidor. Intenta nuevamente más tarde.",
-      });
-    }
-
-    // Clear stored tokens in case of error
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-  }
-};
+    };
     const logout = () => {
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");

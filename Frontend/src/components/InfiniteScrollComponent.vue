@@ -1,66 +1,62 @@
 <!-- InfiniteScrollComponent.vue -->
 <template>
-   <q-option-group
-        v-model="panel"
-        inline
-        :options="[
-          { label: 'Muro Movil', value: 'muroMovil' },
-          { label: 'Lista', value: 'lista' },
-        ]"
-        style="text-align: center;"
-      />
+  <q-option-group
+    v-model="panel"
+    inline
+    :options="[
+      { label: 'Muro Movil', value: 'muroMovil' },
+      { label: 'Lista', value: 'lista' },
+    ]"
+    style="text-align: center"
+  />
 
-      <q-tab-panels v-model="panel" animated class="shadow-2 rounded-borders">
-        <q-tab-panel name="muroMovil">
-          <div
-    ref="scrollContainer"
-    style="
-      height: 100vh;
-      overflow: hidden;
-      height: 80vh;
-      position: relative;
-      padding: 10px;
-   "
-    @scroll="handleScroll"
-  >
-    <div
-      v-for="(post, index) in posts"
-      :key="index"
-      class="post"
-      style="overflow: hidden"
-    >
-      <h5 style="margin: 0px">{{ post.nombre }}</h5>
-      <img
-        :src="post.imagen"
-        style="width: 45%; height: auto; margin-bottom: 10px"
-        alt="Imagen del producto"
-      />
-      <p style="margin: 0px">{{ post.descripcion }}</p>
-    </div>
-  </div>
-        </q-tab-panel>
+  <q-tab-panels v-model="panel" animated class="shadow-2 rounded-borders">
+    <q-tab-panel name="muroMovil">
+      <div
+        ref="scrollContainer"
+        style="
+          height: 100vh;
+          overflow: hidden;
+          height: 80vh;
+          position: relative;
+          padding: 10px;
+        "
+        @scroll="handleScroll"
+      >
+        <div
+          v-for="(post, index) in posts"
+          :key="index"
+          class="post"
+          style="overflow: hidden"
+        >
+          <h5 style="margin: 0px">{{ post.nombre }}</h5>
+          <img
+            :src="post.imagen"
+            style="width: 45%; height: auto; margin-bottom: 10px"
+            alt="Imagen del producto"
+          />
+          <p style="margin: 0px">{{ post.descripcion }}</p>
+        </div>
+      </div>
+    </q-tab-panel>
 
-       <q-tab-panel name="lista">
-        <div class="text-h6" style="text-align: center;">Lista Completa</div>
-       
-          <template v-for="(post, index) in contenedor" :key="index">
-        <p class="post">{{ post.nombre }} {{ post.price ?? '' }}</p>         
-       </template>
-       
-        </q-tab-panel>
+    <q-tab-panel name="lista">
+      <div class="text-h6" style="text-align: center">Lista Completa</div>
 
-       
-      </q-tab-panels>
- 
+      <template v-for="(post, index) in contenedor" :key="index">
+        <p class="post">{{ post.nombre }} - {{ post.descripcion ?? "" }}</p>
+      </template>
+    </q-tab-panel>
+  </q-tab-panels>
 </template>
 
 <script>
 import { ref, onMounted, onUnmounted, nextTick } from "vue";
 /* import { getPosts } from "../variosJs/post-loader"; */
-import { api } from 'boot/axios';
+import { api } from "boot/axios";
 export default {
   setup() {
-    const panel= ref('muroMovil')
+    const panel = ref("muroMovil");
     const posts = ref([]); // Lista de posts
     const loading = ref(false); // Estado de carga
     const scrollContainer = ref(null); // Contenedor de scroll
@@ -68,20 +64,20 @@ export default {
     let scrollInterval = null; // Variable para almacenar el intervalo de auto-scroll
     let fetchInterval = null;
     // cargar productos desde la base de datos
-    const contenedor=ref([])
+    const contenedor = ref([]);
 
     const loadProductosBBDD = async (count = 10) => {
       if (loading.value) {
         return; // Evita múltiples solicitudes concurrentes
       }
-      
+
       loading.value = true; // Marca el estado como cargando
-      
+
       try {
         const productData = []; // Aquí se cargarán los datos de la API
 
         // Solicitar datos de los productos desde la API
-        const response = await api.get('/api/getproductos/');
+        const response = await api.get("/api/getproductos/");
 
         if (response.status === 200) {
           productData.push(...response.data);
@@ -102,7 +98,7 @@ export default {
         });
 
         contenedor.value = newPosts;
-        
+
         if (newPosts.length > 0) {
           posts.value.push(...newPosts); // Agrega los nuevos posts si existen
         } else {
@@ -129,7 +125,6 @@ export default {
         container.scrollHeight - container.clientHeight
       ) {
         container.scrollTop = 0;
-        console.log("Scroll al final, reiniciando al principio.");
       }
     };
 
@@ -142,9 +137,7 @@ export default {
         // Duplica contenido una vez si es necesario
         if (container.scrollHeight <= container.clientHeight) {
           posts.value = [...posts.value, ...posts.value]; // Duplica una vez
-          console.log("Contenido duplicado para scroll infinito.");
         } else {
-          console.log("No se requiere duplicar el contenido.");
         }
       });
       fetchInterval = setInterval(() => {
@@ -172,7 +165,7 @@ export default {
       loading,
       scrollContainer,
       panel,
-contenedor
+      contenedor,
     };
   },
 };

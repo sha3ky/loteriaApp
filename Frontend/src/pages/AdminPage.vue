@@ -103,7 +103,7 @@
           </label>
           <label>
             Imagen:
-            <input type="file" @change="handleImageUpload" />
+            <input type="file" @change="handleImageUpload" id="miFileInput" />
           </label>
           <div style="text-align: center">
             <button style="margin: 0px" type="submit">Subir Producto</button>
@@ -373,6 +373,10 @@ export default {
       product.precio = null;
       product.cantidad = null;
       product.imagen = "";
+      let fileInput = document.getElementById("miFileInput");
+      if (fileInput) {
+        fileInput.value = "";
+      }
     };
 
     //imagenes------------------------------------------
