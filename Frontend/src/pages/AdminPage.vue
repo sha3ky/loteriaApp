@@ -645,7 +645,7 @@ export default {
         type: "info",
         position: "bottom",
       }); */
-      debugger;
+
       try {
         // ✅ Enviar token como parámetro (igual que el GET)
         await api.post("/api/guardar-configuracion/", configuracion.value);

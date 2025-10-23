@@ -46,7 +46,9 @@ import { ref, onMounted, onUnmounted, computed } from "vue";
 import { api } from "boot/axios";
 export default {
   name: "CountdownTimer",
-  setup() {
+  emits: ["countdown-finished", "countdown-extending"], // ✅ Declarar el emit
+
+  setup(props, { emit }) {
     const configuracion = ref({});
     const days = ref(0);
     const hours = ref(0);
@@ -100,6 +102,7 @@ export default {
     });
 
     const updateCountdown = () => {
+      // ✅ Primero verificar si hay targetDate
       if (!targetDate.value) {
         console.log("❌ No hay targetDate");
         return;
@@ -110,18 +113,47 @@ export default {
 
       console.log("🕒 Countdown - distancia:", distance);
 
-      if (distance <= 0) {
-        console.log("⏰ Countdown terminado o en negativo");
+      // ✅ Si la distancia es negativa (ya pasó) y NO hay extensión, hacer return
+      if (distance <= 0 && !configuracion.value.horas_extension_countdown) {
+        console.log("⏰ Countdown terminado SIN extensión - haciendo return");
         days.value = 0;
         hours.value = 0;
         minutes.value = 0;
         seconds.value = 0;
+        emit("countdown-finished", true);
+        return; // ✅ Aquí el return que pides
+      }
 
-        // Extender countdown si está configurado
-        if (configuracion.value.horas_extension_countdown) {
-          // Lógica para extender
+      if (distance <= 0) {
+        console.log("⏰ Countdown terminado o en negativo");
+
+        if (!configuracion.value.horas_extension_countdown) {
+          days.value = 0;
+          hours.value = 0;
+          minutes.value = 0;
+          seconds.value = 0;
+
+          emit("countdown-finished", true);
+          if (countdownInterval) {
+            clearInterval(countdownInterval);
+            countdownInterval = null;
+            console.log("🛑 Interval limpiado");
+          }
+        } else {
+          days.value = 0;
+          hours.value = 0;
+          minutes.value = 0;
+          seconds.value = 0;
+          emit("countdown-extending", true);
+          if (countdownInterval) {
+            clearInterval(countdownInterval);
+            countdownInterval = null;
+            console.log("🛑 Interval limpiado");
+          }
+          console.log("🔄 Countdown terminado pero con extensión activa");
         }
       } else {
+        // Countdown todavía activo
         days.value = Math.floor(distance / (1000 * 60 * 60 * 24));
         hours.value = Math.floor(
           (distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
@@ -143,7 +175,12 @@ export default {
       updateCountdown();
       setInterval(updateCountdown, 1000);
     });
-
+    onUnmounted(() => {
+      // ✅ Limpiar interval al desmontar el componente
+      if (countdownInterval) {
+        clearInterval(countdownInterval);
+      }
+    });
     return {
       days,
       hours,

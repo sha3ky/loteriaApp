@@ -2,7 +2,10 @@
   <q-page class="page-container" style="min-height: 70vh">
     <div class="background-blur"></div>
     <div>
-      <CountdownTimer />
+      <CountdownTimer
+        @countdown-finished="handleCountdownFinished"
+        @countdown-extending="handleCountdownExtending"
+      />
     </div>
     <div style="height: 45vh; width: 45vh">
       <VueWheelSpinner
@@ -179,7 +182,19 @@ export default defineComponent({
         await searchWinner(); // Llamar a la función asíncrona aquí
       }
     });
+    const handleCountdownFinished = (value) => {
+      console.log("handleCountdownFinished", value);
+      console.log("🎯 Countdown terminado DEFINITIVAMENTE");
+      handleSpinButtonClick();
+    };
 
+    const handleCountdownExtending = (value) => {
+      console.log("handleCountdownExtending", value);
+      console.log("🔄 Countdown terminado pero EXTENDIÉNDOSE");
+      handleSpinButtonClick();
+      // Aquí tu lógica cuando termina pero hay extensión
+      // Ej: mostrarMensajeExtension(), pausarRuleta(), etc.
+    };
     const handleSpinButtonClick = () => {
       stopAllSounds(); // Detener todos los sonidos antes de iniciar el giro
       if (
@@ -315,6 +330,8 @@ export default defineComponent({
       fondoImagen, // Referencia a spinner para acceder a su método spinWheel
       showConfetti,
       configuracion,
+      handleCountdownFinished,
+      handleCountdownExtending,
     };
   },
 });
