@@ -21,8 +21,8 @@ api.interceptors.request.use((config) => {
   /*   if (config.method === "get" && config.params) {
     config.params.token = CLIENT_TOKEN;
   } */
-  if (config.method === "get") {
-    config.params = config.params || {}; // ← Asegurar que params existe
+  if (config.method === "get" || config.method === "post") {
+    config.params = config.params || {};
     config.params.token = CLIENT_TOKEN;
   }
   /*  console.log('🔍 Headers que se envían:', config.headers) */
@@ -30,9 +30,30 @@ api.interceptors.request.use((config) => {
     `🚀 ${config.method?.toUpperCase()} ${config.url}`,
     config.params || config.data
   ); */
+  /* 
+  if (["post", "put", "patch", "delete"].includes(config.method)) {
+    const csrfToken = getCookie("csrftoken");
+    if (csrfToken) {
+      config.headers["X-CSRFToken"] = csrfToken;
+    }
+  } */
   return config;
 });
-
+// Función para obtener cookie CSRF
+/* function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== "") {
+    const cookies = document.cookie.split(";");
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === name + "=") {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+} */
 // Interceptor de response para manejo centralizado de errores
 api.interceptors.response.use(
   (response) => {

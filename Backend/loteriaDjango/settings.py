@@ -46,8 +46,11 @@ CORS_ALLOW_HEADERS = [
     "content-type",
     "authorization",
     "x-requested-with",
-     "x-cliente-token",  # ← ¡AGREGAR ESTO!
-    "x-client-name",    # ← Y ESTO por si acaso
+    "x-cliente-token",  # ← ¡AGREGAR ESTO!
+    "x-client-name",  
+    'x-csrftoken',  # ← AGREGAR ESTO
+    'x-requested-with',
+    'x-cliente-token',  # ← Y ESTO TAMBIÉN  # ← Y ESTO por si acaso
 ]
 
 

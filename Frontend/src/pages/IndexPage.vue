@@ -22,10 +22,11 @@
         <!-- style="position: fixed; bottom: -2.5vh; right: -30px; z-index: 9999" -->
         <template #default>
           <q-btn
+            v-if="configuracion.mostrar_boton_demo"
             class="glossy spin-button"
             rounded
             color="deep-orange"
-            label="Demo"
+            :label="configuracion.texto_boton_demo"
             :disabled="isSpinning"
             @click="handleSpinButtonClick"
             @mouseover="handleSpinButtonHover"
@@ -62,7 +63,7 @@
           color: white;
         "
       >
-        Número ganador:
+        Número obtenido:
       </h4>
 
       <!-- Número ganador o marcador de posición -->
@@ -130,12 +131,10 @@ import { defineComponent, ref, onMounted, watch } from "vue";
 import VueWheelSpinner from "../components/VueWheelSpinner.vue";
 import cursorImage from "../icons/arrow_drop2.png";
 // import flecha from "../icons/flecha.png";
-
 import CountdownTimer from "../components/CountdownTimer.vue";
 import { slices as importedSlices } from "../variosJs/slices.js";
 import fondoImagen from "../images/fondo.jpg";
 import ConfettiAnimation from "../components/ConfettiAnimation.vue";
-
 import wonSound from "../sounds/winning2.wav";
 import loseSound from "../sounds/lose.wav";
 import clickSound from "../sounds/click.wav";
@@ -151,6 +150,7 @@ export default defineComponent({
     ConfettiAnimation,
   },
   setup() {
+    const configuracion = ref({});
     const isDialogOpen = ref(false);
     const nombreGanador = ref("");
     const winnerResult = ref(null);
@@ -196,7 +196,15 @@ export default defineComponent({
         spinner.value.spinWheel(defaultWinner.value);
       }
     };
-
+    const cargarConfiguracion = async () => {
+      try {
+        const response = await api.get("/api/configuracion-cliente/");
+        configuracion.value = response.data;
+      } catch (error) {
+        console.error("❌ Error completo:", error.response?.data);
+        // Muestra el mensaje específico del backend
+      }
+    };
     // Función para detener todos los sonidos
     const stopAllSounds = () => {
       for (const key in sounds.value) {
@@ -282,6 +290,7 @@ export default defineComponent({
       sounds.value.spinButtonLeave = new Audio(leaveSound);
       sounds.value.spinning = new Audio(spinningSound);
       sounds.value.lose = new Audio(loseSound);
+      cargarConfiguracion();
     });
 
     return {
@@ -305,6 +314,7 @@ export default defineComponent({
       spinner,
       fondoImagen, // Referencia a spinner para acceder a su método spinWheel
       showConfetti,
+      configuracion,
     };
   },
 });

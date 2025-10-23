@@ -683,8 +683,9 @@ def get_allData(request):
             return JsonResponse({"error": str(e)}, status=500)
     return JsonResponse({"error": "Método no permitido"}, status=405)
 
-
+@csrf_exempt
 def obtener_configuracion_cliente(request):
+
     try:
         cliente_token = request.GET.get('token')
         
@@ -738,6 +739,90 @@ def obtener_configuracion_cliente(request):
         )
     except Exception as e:
         print(f"Error en obtener_configuracion_cliente: {e}")
+        return JsonResponse(
+            {"error": "Error interno del servidor."}, 
+            status=500
+        )
+
+
+@csrf_exempt
+def guardar_configuracion_cliente(request):
+    try:
+        
+        if request.method != 'POST':
+            return JsonResponse({"error": "Método no permitido. Solo POST."}, status=405)
+        
+        # ✅ Obtener token del header
+        cliente_token = request.headers.get('X-Cliente-Token') or request.headers.get('Authorization')
+        
+        # Limpiar si viene con "Bearer "
+        if cliente_token and cliente_token.startswith('Bearer '):
+            cliente_token = cliente_token[7:]
+        
+        if not cliente_token:
+            return JsonResponse({"error": "Se requiere el header 'X-Cliente-Token'."}, status=400)
+        
+        # Buscar el cliente
+        cliente = Cliente.objects.get(token=cliente_token)
+        
+        # Obtener o crear la configuración
+        configuracion, created = ConfiguracionCliente.objects.get_or_create(cliente=cliente)
+        
+        # Actualizar campos según los datos recibidos
+        data = json.loads(request.body)
+        # Cuenta atrás
+        if 'fecha_final_countdown' in data:
+            configuracion.fecha_final_countdown = data['fecha_final_countdown']
+        if 'horas_extension_countdown' in data:
+            configuracion.horas_extension_countdown = data['horas_extension_countdown']
+        
+        # Apariencia
+        if 'logo_url' in data:
+            configuracion.logo_url = data['logo_url']
+        if 'logo_base64' in data:
+            configuracion.logo_base64 = data['logo_base64']
+        if 'color_principal' in data:
+            configuracion.color_principal = data['color_principal']
+        if 'color_secundario' in data:
+            configuracion.color_secundario = data['color_secundario']
+        
+        # Funcionalidad
+        if 'mostrar_boton_demo' in data:
+            configuracion.mostrar_boton_demo = data['mostrar_boton_demo']
+        if 'texto_boton_demo' in data:
+            configuracion.texto_boton_demo = data['texto_boton_demo']
+        if 'auto_girar_ruleta' in data:
+            configuracion.auto_girar_ruleta = data['auto_girar_ruleta']
+        if 'intervalo_auto_girar' in data:
+            configuracion.intervalo_auto_girar = data['intervalo_auto_girar']
+        
+        # Textos
+        if 'texto_countdown' in data:
+            configuracion.texto_countdown = data['texto_countdown']
+        if 'texto_ganador' in data:
+            configuracion.texto_ganador = data['texto_ganador']
+        if 'texto_intentar_otra_vez' in data:
+            configuracion.texto_intentar_otra_vez = data['texto_intentar_otra_vez']
+        
+        configuracion.save()
+        
+        return JsonResponse({
+            "mensaje": "✅ Configuración guardada correctamente",
+            "actualizado_en": configuracion.actualizado_en.isoformat()
+        })
+        
+    except Cliente.DoesNotExist:
+        return JsonResponse(
+            {"error": "Cliente no encontrado."}, 
+            status=404
+        )
+    except json.JSONDecodeError:
+        return JsonResponse(
+            {"error": "JSON inválido en el cuerpo de la solicitud."}, 
+            status=400
+        )
+    except Exception as e:
+        print(f"Error en guardar_configuracion_cliente: {e}")
         return JsonResponse(
             {"error": "Error interno del servidor."}, 
             status=500

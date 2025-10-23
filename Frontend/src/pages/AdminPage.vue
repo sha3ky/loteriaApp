@@ -15,37 +15,88 @@
           v-model="configuracion.mostrar_boton_demo"
           color="green"
           label="Mostrar botón demo"
+          @update:model-value="guardarConfiguracion"
         />
 
         <q-toggle
           v-model="configuracion.auto_girar_ruleta"
           color="green"
           label="Auto-girar ruleta"
+          @update:model-value="guardarConfiguracion"
+        />
+        <q-input
+          v-model="fechaFinalCountdown"
+          label="Fecha y hora final del countdown"
+          filled
+          readonly
+          @click="showDateTimePicker = true"
         />
 
+        <q-dialog v-model="showDateTimePicker">
+          <q-card style="max-width: 90vw; text-align: center">
+            <q-card-section>
+              <div class="row items-center justify-between q-col-gutter-md">
+                <!-- Fecha - ocupa toda la fila en móvil, mitad en desktop -->
+
+                <div class="col-12 col-md-6 q-pa-sm">
+                  <q-date
+                    v-model="fechaTemp"
+                    mask="YYYY-MM-DD HH:mm"
+                    today-btn
+                    style="max-width: 100%"
+                  />
+                </div>
+
+                <!-- Hora - ocupa toda la fila en móvil, mitad en desktop -->
+                <div class="col-12 col-md-6 q-pa-sm">
+                  <q-time
+                    v-model="fechaTemp"
+                    mask="YYYY-MM-DD HH:mm"
+                    format24h
+                    style="max-width: 100%"
+                  />
+                </div>
+              </div>
+            </q-card-section>
+
+            <q-card-actions align="right">
+              <q-btn label="Cancelar" color="red" v-close-popup />
+              <q-btn
+                label="OK"
+                color="green"
+                @click="confirmDateTime"
+                v-close-popup
+              />
+            </q-card-actions>
+          </q-card>
+        </q-dialog>
         <!-- Para los textos usa inputs -->
         <q-input
           v-model="configuracion.texto_countdown"
           label="Texto del countdown"
           filled
+          @update:model-value="guardarConfiguracion"
         />
 
         <q-input
           v-model="configuracion.texto_ganador"
           label="Texto del ganador"
           filled
+          @update:model-value="guardarConfiguracion"
         />
 
         <q-input
           v-model="configuracion.texto_intentar_otra_vez"
           label="Texto intentar otra vez"
           filled
+          @update:model-value="guardarConfiguracion"
         />
 
         <q-input
           v-model="configuracion.texto_boton_demo"
           label="Texto botón demo"
           filled
+          @update:model-value="guardarConfiguracion"
         />
 
         <!-- Para colores usa color picker -->
@@ -53,6 +104,7 @@
           v-model="configuracion.color_principal"
           label="Color principal"
           filled
+          @update:model-value="guardarConfiguracion"
         >
           <template v-slot:append>
             <q-icon name="colorize" class="cursor-pointer">
@@ -67,6 +119,7 @@
           v-model="configuracion.color_secundario"
           label="Color secundario"
           filled
+          @update:model-value="guardarConfiguracion"
         >
           <template v-slot:append>
             <q-icon name="colorize" class="cursor-pointer">
@@ -83,6 +136,7 @@
           label="Horas extensión countdown"
           type="number"
           filled
+          @update:model-value="guardarConfiguracion"
         />
 
         <q-input
@@ -90,6 +144,7 @@
           label="Intervalo auto-girar (segundos)"
           type="number"
           filled
+          @update:model-value="guardarConfiguracion"
         />
       </q-tab-panel>
 
@@ -265,7 +320,7 @@
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted, reactive } from "vue";
+import { ref, onMounted, onUnmounted, reactive, computed, watch } from "vue";
 /* import BASE_URL from "../variosJs/config"; */
 // import { toRaw } from "vue";
 import { useRouter } from "vue-router";
@@ -275,6 +330,44 @@ import { useQuasar } from "quasar";
 export default {
   name: "EditableTable",
   setup() {
+    const showDateTimePicker = ref(false);
+    const fechaTemp = ref("");
+
+    const fechaFinalCountdown = computed({
+      get: () => {
+        if (!configuracion.value.fecha_final_countdown) return "";
+
+        const fecha = new Date(configuracion.value.fecha_final_countdown);
+        const year = fecha.getUTCFullYear();
+        const month = String(fecha.getUTCMonth() + 1).padStart(2, "0");
+        const day = String(fecha.getUTCDate()).padStart(2, "0");
+        const hours = String(fecha.getUTCHours()).padStart(2, "0");
+        const minutes = String(fecha.getUTCMinutes()).padStart(2, "0");
+
+        return `${day}/${month}/${year} ${hours}:${minutes}`;
+      },
+      set: (newValue) => {
+        // No necesitamos setter si usamos el diálogo
+      },
+    });
+
+    const confirmDateTime = () => {
+      if (fechaTemp.value) {
+        // Convertir a formato ISO para la base de datos
+        const [fechaPart, horaPart] = fechaTemp.value.split(" ");
+        const [year, month, day] = fechaPart.split("-");
+        const [hours, minutes] = horaPart.split(":");
+
+        // Crear fecha en UTC (para España UTC+1, ajustamos)
+        const fechaUTC = new Date(
+          Date.UTC(year, month - 1, day, hours, minutes)
+        );
+        configuracion.value.fecha_final_countdown = fechaUTC.toISOString();
+
+        guardarConfiguracion();
+      }
+      showDateTimePicker.value = false;
+    };
     const configuracion = ref({});
     const tab = ref("participants");
     const product = reactive({
@@ -293,7 +386,6 @@ export default {
     const separator = ref("cell");
     const allDataTable = ref([]);
     const updateInterval = 5000; // 5 segundos
-    let intervalId = null;
     const router = useRouter();
     const isDialogOpen = ref(false); // Controls dialog visibility
     const editableRow = ref({}); // Stores the row data being edited
@@ -353,6 +445,10 @@ export default {
         field: "comentarios",
       },
     ];
+    let timeoutId = null;
+    let intervalId = null;
+    const guardando = ref(false);
+
     //imagenes------------------------------------------
 
     //eliminamos un producto de la base de datos
@@ -512,12 +608,68 @@ export default {
 
     // Function para hacer el update a la tabla
     const cargarConfiguracion = async () => {
+      debugger;
       try {
         const response = await api.get("/api/configuracion-cliente/");
         configuracion.value = response.data;
       } catch (error) {
         console.error("❌ Error completo:", error.response?.data);
         // Muestra el mensaje específico del backend
+      }
+    };
+
+    const guardarConfiguracion = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+
+      // Mostrar notificación simple sin números
+      $q.notify({
+        message: "Guardando automáticamente...",
+        timeout: 2500, // Se cierra sola después de 2.5 segundos
+        type: "warning",
+        position: "bottom",
+      });
+
+      // Guardar después del tiempo
+      timeoutId = setTimeout(() => {
+        ejecutarGuardado();
+      }, 3000);
+    };
+
+    const ejecutarGuardado = async () => {
+      guardando.value = true;
+
+      /* const notificacion = $q.notify({
+        message: "Guardando configuración...",
+        spinner: true,
+        timeout: 0,
+        type: "info",
+        position: "bottom",
+      }); */
+      debugger;
+      try {
+        // ✅ Enviar token como parámetro (igual que el GET)
+        await api.post("/api/guardar-configuracion/", configuracion.value);
+
+        // ✅ Cerrar notificación ANTES de crear la nueva
+        /*    notificacion(); */
+        $q.notify({
+          message: "✅ Configuración guardada",
+          spinner: false,
+          type: "positive",
+          timeout: 2000,
+        });
+      } catch (error) {
+        // ✅ Cerrar notificación ANTES de crear la nueva
+        /*   notificacion(); */
+        $q.notify({
+          message: "❌ Error guardando configuración",
+          spinner: false,
+          type: "negative",
+          timeout: 3000,
+        });
+        console.error("Error 403 details:", error.response?.data);
+      } finally {
+        guardando.value = false;
       }
     };
 
@@ -585,27 +737,26 @@ export default {
 
     const eliminarPersonaTabla = async () => {
       try {
-        const response = await api.get(
-          `/api/delete-user/${editableRow.value.id}/`,
-          {
-            method: "DELETE",
-          }
+        // ❌ ERROR: usabas api.get con method: "DELETE"
+        // ✅ CORRECTO: usa api.delete directamente
+        const response = await api.delete(
+          `/api/delete-user/${editableRow.value.id}/`
         );
 
-        if (response.ok) {
-          const deletedStatus = await response.json();
-          if (deletedStatus) {
-            $q.notify({
-              type: "positive",
-              message: "Usuario eliminado.",
-            });
-          }
+        if (response.status === 200) {
+          $q.notify({
+            type: "positive",
+            message: "Usuario eliminado.",
+          });
           isDialogOpen.value = false;
-        } else {
-          console.error("Error al obtener el estado de los números.");
+          loadPersonasTabla(); // Recargar la lista
         }
       } catch (error) {
-        console.error("Error al actualizar el estado:", error);
+        console.error("Error eliminando usuario:", error);
+        $q.notify({
+          type: "negative",
+          message: "Error al eliminar usuario.",
+        });
       }
     };
 
@@ -624,6 +775,29 @@ export default {
       if (intervalId) clearInterval(intervalId);
     });
 
+    watch(showDateTimePicker, (newVal) => {
+      if (newVal && configuracion.value.fecha_final_countdown) {
+        // Convertir de UTC a hora local para España
+        const fecha = new Date(configuracion.value.fecha_final_countdown);
+        const year = fecha.getUTCFullYear();
+        const month = String(fecha.getUTCMonth() + 1).padStart(2, "0");
+        const day = String(fecha.getUTCDate()).padStart(2, "0");
+        const hours = String(fecha.getUTCHours()).padStart(2, "0");
+        const minutes = String(fecha.getUTCMinutes()).padStart(2, "0");
+
+        fechaTemp.value = `${year}-${month}-${day} ${hours}:${minutes}`;
+      } else if (newVal && !configuracion.value.fecha_final_countdown) {
+        // Si no hay fecha, usar la actual
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, "0");
+        const day = String(now.getDate()).padStart(2, "0");
+        const hours = String(now.getHours()).padStart(2, "0");
+        const minutes = String(now.getMinutes()).padStart(2, "0");
+
+        fechaTemp.value = `${year}-${month}-${day} ${hours}:${minutes}`;
+      }
+    });
     return {
       resetForm,
       deleteProduct,
@@ -648,6 +822,11 @@ export default {
       eliminarPersonaTabla,
       tab,
       configuracion,
+      guardarConfiguracion,
+      showDateTimePicker,
+      fechaTemp,
+      confirmDateTime,
+      fechaFinalCountdown,
     };
   },
 };

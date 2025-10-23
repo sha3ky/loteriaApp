@@ -28,6 +28,8 @@
     </div>
 
     <!-- Botón demo condicional -->
+  </div>
+  <!--  <div>
     <button
       v-if="configuracion.mostrar_boton_demo"
       class="demo-btn"
@@ -35,7 +37,7 @@
     >
       {{ configuracion.texto_boton_demo || "Modo Demo" }}
     </button>
-  </div>
+  </div> -->
 </template>
 
 <script>
@@ -45,15 +47,7 @@ import { api } from "boot/axios";
 export default {
   name: "CountdownTimer",
   setup() {
-    const configuracion = ref({
-      fecha_final_countdown: null,
-      horas_extension_countdown: 2,
-      mostrar_boton_demo: true,
-      texto_boton_demo: "🎮 Modo Demo",
-      texto_countdown: "⏰ ¡El sorteo comenzará en...!",
-      creado_en: new Date().toISOString(),
-      actualizado_en: new Date().toISOString(),
-    });
+    const configuracion = ref({});
     const days = ref(0);
     const hours = ref(0);
     const minutes = ref(0);
@@ -71,19 +65,61 @@ export default {
     };
 
     const targetDate = computed(() => {
-      return new Date(configuracion.value.fecha_final_countdown).getTime();
+      if (!configuracion.value.fecha_final_countdown) return null;
+
+      const fechaStr = configuracion.value.fecha_final_countdown;
+      const match = fechaStr.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+
+      if (match) {
+        const [_, year, month, day, targetHours, targetMinutes] = match;
+
+        // ✅ Forzar la hora EXACTA ignorando zona horaria
+        const targetDate = new Date();
+        targetDate.setFullYear(parseInt(year));
+        targetDate.setMonth(parseInt(month) - 1);
+        targetDate.setDate(parseInt(day));
+        targetDate.setHours(parseInt(targetHours)); // ← 11
+        targetDate.setMinutes(parseInt(targetMinutes)); // ← 33
+        targetDate.setSeconds(0);
+        targetDate.setMilliseconds(0);
+
+        // ✅ RESTAR 2 horas manualmente para compensar
+        targetDate.setHours(targetDate.getHours() - 2);
+
+        console.log("✅ Hora objetivo:", `${targetHours}:${targetMinutes}`);
+        console.log("✅ Fecha FINAL (corregida):", targetDate);
+        console.log(
+          "✅ getHours() después de corrección:",
+          targetDate.getHours()
+        );
+
+        return targetDate.getTime();
+      }
+
+      return null;
     });
 
     const updateCountdown = () => {
-      if (!configuracion.value.fecha_final_countdown) return;
+      if (!targetDate.value) {
+        console.log("❌ No hay targetDate");
+        return;
+      }
 
       const now = new Date().getTime();
       const distance = targetDate.value - now;
 
+      console.log("🕒 Countdown - distancia:", distance);
+
       if (distance <= 0) {
+        console.log("⏰ Countdown terminado o en negativo");
+        days.value = 0;
+        hours.value = 0;
+        minutes.value = 0;
+        seconds.value = 0;
+
         // Extender countdown si está configurado
         if (configuracion.value.horas_extension_countdown) {
-          // Lógica para extender (podría manejarse en backend)
+          // Lógica para extender
         }
       } else {
         days.value = Math.floor(distance / (1000 * 60 * 60 * 24));
@@ -92,14 +128,20 @@ export default {
         );
         minutes.value = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
         seconds.value = Math.floor((distance % (1000 * 60)) / 1000);
+
+        console.log("🕒 Tiempo restante:", {
+          days: days.value,
+          hours: hours.value,
+          minutes: minutes.value,
+          seconds: seconds.value,
+        });
       }
     };
 
     onMounted(async () => {
       await cargarConfiguracion();
-      if (configuracion.value.fecha_final_countdown) {
-        setInterval(updateCountdown, 1000);
-      }
+      updateCountdown();
+      setInterval(updateCountdown, 1000);
     });
 
     return {

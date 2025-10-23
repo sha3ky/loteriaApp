@@ -37,6 +37,7 @@ from loteria.views import (
     LoginView,
     GirarRuletaView,
     obtener_configuracion_cliente,
+    guardar_configuracion_cliente
 )
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from django.conf import settings
@@ -70,7 +71,7 @@ urlpatterns = [
     path("api/login/", LoginView.as_view(), name="login"),
     path("api/girar-ruleta/", GirarRuletaView.as_view(), name="girar_ruleta"),
     path("api/configuracion-cliente/", obtener_configuracion_cliente, name="configuracion_cliente"),
-    
+    path("api/guardar-configuracion/", guardar_configuracion_cliente, name="guardar_configuracion"),
     # JWT (MANTENER - son necesarios)
     path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),

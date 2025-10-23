@@ -69,8 +69,8 @@ class ConfiguracionCliente(models.Model):
     
     # Configuraciones de cuenta atrás
     fecha_final_countdown = models.DateTimeField(null=True, blank=True)
-    horas_extension_countdown = models.IntegerField(default=2)  # Horas a añadir cuando termina
-    
+     # Horas a añadir cuando termina
+    horas_extension_countdown = models.IntegerField(default=0)
     # Configuraciones de apariencia
     logo_url = models.URLField(blank=True, null=True)
     logo_base64 = models.TextField(blank=True, null=True)  # O almacenar logo en base64
