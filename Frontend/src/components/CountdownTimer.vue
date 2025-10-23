@@ -54,7 +54,7 @@ export default {
     const hours = ref(0);
     const minutes = ref(0);
     const seconds = ref(0);
-
+    let countdownInterval = null;
     // Cargar configuración del cliente
     const cargarConfiguracion = async () => {
       try {
@@ -102,7 +102,6 @@ export default {
     });
 
     const updateCountdown = () => {
-      // ✅ Primero verificar si hay targetDate
       if (!targetDate.value) {
         console.log("❌ No hay targetDate");
         return;
@@ -113,67 +112,58 @@ export default {
 
       console.log("🕒 Countdown - distancia:", distance);
 
-      // ✅ Si la distancia es negativa (ya pasó) y NO hay extensión, hacer return
-      if (distance <= 0 && !configuracion.value.horas_extension_countdown) {
-        console.log("⏰ Countdown terminado SIN extensión - haciendo return");
+      if (distance <= 0) {
+        console.log("⏰ Countdown terminado o en negativo");
+
         days.value = 0;
         hours.value = 0;
         minutes.value = 0;
         seconds.value = 0;
-        emit("countdown-finished", true);
-        return; // ✅ Aquí el return que pides
-      }
 
-      if (distance <= 0) {
-        console.log("⏰ Countdown terminado o en negativo");
+        // ✅ VERIFICAR SI HAY EXTENSIÓN CONFIGURADA
+        if (configuracion.value.horas_extension_countdown > 0) {
+          console.log("🔄 Countdown terminado - APLICANDO EXTENSIÓN");
 
-        if (!configuracion.value.horas_extension_countdown) {
-          days.value = 0;
-          hours.value = 0;
-          minutes.value = 0;
-          seconds.value = 0;
+          // ✅ CALCULAR NUEVA FECHA con la extensión
+          const horasExtension = configuracion.value.horas_extension_countdown;
+          const nuevaFecha = new Date();
+          nuevaFecha.setHours(nuevaFecha.getHours() + horasExtension);
 
-          emit("countdown-finished", true);
-          if (countdownInterval) {
-            clearInterval(countdownInterval);
-            countdownInterval = null;
-            console.log("🛑 Interval limpiado");
-          }
+          // ✅ ACTUALIZAR la fecha en la configuración
+          configuracion.value.fecha_final_countdown = nuevaFecha.toISOString();
+
+          console.log(`⏰ Nueva fecha con extensión: ${nuevaFecha}`);
+
+          // ✅ NO emitir finished=true porque se está extendiendo
+          // ✅ NO limpiar el interval - que siga con la nueva fecha
         } else {
-          days.value = 0;
-          hours.value = 0;
-          minutes.value = 0;
-          seconds.value = 0;
-          emit("countdown-extending", true);
-          if (countdownInterval) {
+          // ✅ NO hay extensión - terminar definitivamente
+          console.log("⏹️ Countdown terminado DEFINITIVAMENTE");
+          emit("countdown-finished", true);
+
+          /* if (countdownInterval) {
             clearInterval(countdownInterval);
             countdownInterval = null;
             console.log("🛑 Interval limpiado");
-          }
-          console.log("🔄 Countdown terminado pero con extensión activa");
+          } */
         }
       } else {
-        // Countdown todavía activo
+        // Countdown ACTIVO
         days.value = Math.floor(distance / (1000 * 60 * 60 * 24));
         hours.value = Math.floor(
           (distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
         );
         minutes.value = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
         seconds.value = Math.floor((distance % (1000 * 60)) / 1000);
-
-        console.log("🕒 Tiempo restante:", {
-          days: days.value,
-          hours: hours.value,
-          minutes: minutes.value,
-          seconds: seconds.value,
-        });
       }
     };
 
     onMounted(async () => {
       await cargarConfiguracion();
       updateCountdown();
-      setInterval(updateCountdown, 1000);
+
+      // ✅ Inicializar el interval
+      countdownInterval = setInterval(updateCountdown, 1000);
     });
     onUnmounted(() => {
       // ✅ Limpiar interval al desmontar el componente
@@ -181,6 +171,7 @@ export default {
         clearInterval(countdownInterval);
       }
     });
+
     return {
       days,
       hours,

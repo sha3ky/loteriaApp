@@ -2,10 +2,7 @@
   <q-page class="page-container" style="min-height: 70vh">
     <div class="background-blur"></div>
     <div>
-      <CountdownTimer
-        @countdown-finished="handleCountdownFinished"
-        @countdown-extending="handleCountdownExtending"
-      />
+      <CountdownTimer @countdown-finished="handleCountdownStatus" />
     </div>
     <div style="height: 45vh; width: 45vh">
       <VueWheelSpinner
@@ -165,7 +162,6 @@ export default defineComponent({
     const cursorDistance = ref(130);
     const spinner = ref(null);
     const showConfetti = ref(false);
-
     // Creamos instancias de Audio para cada sonido en onMounted
     const sounds = ref({
       won: null,
@@ -182,19 +178,18 @@ export default defineComponent({
         await searchWinner(); // Llamar a la función asíncrona aquí
       }
     });
-    const handleCountdownFinished = (value) => {
-      console.log("handleCountdownFinished", value);
-      console.log("🎯 Countdown terminado DEFINITIVAMENTE");
-      handleSpinButtonClick();
+    const handleCountdownStatus = (status) => {
+      debugger;
+      if (status) {
+        console.log(
+          "🎯 Countdown TERMINADO - ejecutar acción principal en 5 segundos"
+        );
+        handleSpinButtonClick();
+      }
     };
 
-    const handleCountdownExtending = (value) => {
-      console.log("handleCountdownExtending", value);
-      console.log("🔄 Countdown terminado pero EXTENDIÉNDOSE");
-      handleSpinButtonClick();
-      // Aquí tu lógica cuando termina pero hay extensión
-      // Ej: mostrarMensajeExtension(), pausarRuleta(), etc.
-    };
+    // Ejemplo de funciones que podrías llamar:
+
     const handleSpinButtonClick = () => {
       stopAllSounds(); // Detener todos los sonidos antes de iniciar el giro
       if (
@@ -232,10 +227,10 @@ export default defineComponent({
     };
 
     const searchWinner = async () => {
-      nombreGanador.value = "";
-      try {
-        // para testear solo
+      // ❌ ELIMINA ESTE WHILE - está mal y no hace falta
+      // while ((nombreGanador.value = "")) {}
 
+      try {
         const response = await api.get(
           `/api/get-winner/${winnerResult.value.text}/`
         );
@@ -245,11 +240,8 @@ export default defineComponent({
           nombreGanador.value = winner.nombre_completo;
           isDialogOpen.value = true;
 
-          // Reproduce el sonido de winning
           playAudio(sounds.value.won);
-          // Muestra confetti mientras suena el audio de winning
           showConfetti.value = true;
-          // Escucha cuando el sonido de 'won' termina y luego apaga el confetti
           sounds.value.won.onended = () => {
             showConfetti.value = false;
           };
@@ -257,6 +249,15 @@ export default defineComponent({
           console.error("Error al obtener el estado de los números.");
           isDialogOpen.value = true;
           playAudio(sounds.value.lose);
+
+          isDialogOpen.value = false;
+          // ✅ Esto ya hace que se repita
+          setTimeout(() => {
+            console.log(
+              "🚀 Ejecutando handleSpinButtonClick después de 5 segundos"
+            );
+            handleSpinButtonClick();
+          }, 15000); // 5 segundos de espera
         }
       } catch (error) {
         console.error("Error al actualizar el estado:", error);
@@ -330,8 +331,7 @@ export default defineComponent({
       fondoImagen, // Referencia a spinner para acceder a su método spinWheel
       showConfetti,
       configuracion,
-      handleCountdownFinished,
-      handleCountdownExtending,
+      handleCountdownStatus,
     };
   },
 });
