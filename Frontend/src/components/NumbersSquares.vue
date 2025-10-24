@@ -53,6 +53,7 @@ export default {
   name: "NumbersSquares",
 
   setup() {
+    const configuracion = ref({});
     const totalNumbers = Array.from({ length: 50 }, (_, i) => i + 1); // Genera [1, 2, ..., 99]
     const selectedNumber = ref(null);
     const isDialogOpen = ref(false);
@@ -68,7 +69,16 @@ export default {
     // Actualizar el estado cada cierto tiempo
     const updateInterval = 5000; // 5 segundos
     let intervalId = null;
-
+    const cargarConfiguracion = async () => {
+      try {
+        const response = await api.get("/api/configuracion-cliente/");
+        configuracion.value = response.data;
+        console.log("configuracion.value", configuracion.value);
+      } catch (error) {
+        console.error("❌ Error completo:", error.response?.data);
+        // Muestra el mensaje específico del backend
+      }
+    };
     const fetchStatusUpdate = async () => {
       try {
         // ✅ Usar axios en lugar de apiCall
@@ -97,6 +107,7 @@ export default {
     onMounted(() => {
       fetchStatusUpdate(); // Llamada inicial
       intervalId = setInterval(fetchStatusUpdate, updateInterval);
+      cargarConfiguracion();
     });
 
     // Limpia el intervalo cuando el componente se desmonta
@@ -106,25 +117,28 @@ export default {
 
     // Función para abrir el diálogo
     const openDialog = (number) => {
-      if (isNumberGreen(number)) {
-        // console.log("Estado actual:", toRaw(status.value));
-        const toRawStatus = toRaw(status.value);
-        const filteredStatus = Object.values(toRawStatus).find(
-          (value) => value.numero === number
-        );
+      if (!configuracion.value.auto_girar_ruleta) {
+        if (isNumberGreen(number)) {
+          // console.log("Estado actual:", toRaw(status.value));
+          const toRawStatus = toRaw(status.value);
+          const filteredStatus = Object.values(toRawStatus).find(
+            (value) => value.numero === number
+          );
 
-        const nombreCompleto = filteredStatus?.nombre_completo || "desconocido";
+          const nombreCompleto =
+            filteredStatus?.nombre_completo || "desconocido";
 
-        Notify.create({
-          message: `Este número está asignado a ${nombreCompleto} !`,
-          color: "positive", // Cambia a 'negative', 'warning', etc.
-          position: "bottom", // Puede ser 'top', 'bottom', 'left', 'right', 'top-left', etc.
-          timeout: 3000, // Tiempo en milisegundos antes de desaparecer automáticamente
-        });
-        isDialogOpen.value = false; // Asegura que el diálogo no se abra
-      } else {
-        selectedNumber.value = number;
-        isDialogOpen.value = true;
+          Notify.create({
+            message: `Este número está asignado a ${nombreCompleto} !`,
+            color: "positive", // Cambia a 'negative', 'warning', etc.
+            position: "bottom", // Puede ser 'top', 'bottom', 'left', 'right', 'top-left', etc.
+            timeout: 3000, // Tiempo en milisegundos antes de desaparecer automáticamente
+          });
+          isDialogOpen.value = false; // Asegura que el diálogo no se abra
+        } else {
+          selectedNumber.value = number;
+          isDialogOpen.value = true;
+        }
       }
     };
 

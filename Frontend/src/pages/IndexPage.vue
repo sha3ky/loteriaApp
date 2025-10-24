@@ -25,7 +25,7 @@
             v-if="configuracion.mostrar_boton_demo"
             class="glossy spin-button"
             rounded
-            color="deep-orange"
+            :style="{ backgroundColor: configuracion.color_principal }"
             :label="configuracion.texto_boton_demo"
             :disabled="isSpinning"
             @click="handleSpinButtonClick"
@@ -97,7 +97,7 @@
           <q-card-section class="dialog-content">
             <div v-if="nombreGanador" class="winner-section">
               <div class="text-h6 winner-title">
-                La ganadora o el Ganador es {{ nombreGanador }}
+                {{ configuracion.texto_ganador }} - {{ nombreGanador }}
               </div>
               <div class="sign-container">
                 <div class="sign">
@@ -109,8 +109,7 @@
             </div>
             <div v-else class="try-again-section">
               <div class="text-h6 try-again-title">
-                "Lo sentimos, no hay ganador en este momento. La ruleta girará
-                de nuevo automáticamente."
+                {{ configuracion.texto_intentar_otra_vez }}
               </div>
             </div>
           </q-card-section>
@@ -281,14 +280,16 @@ export default defineComponent({
 
           // Mantenemos el diálogo abierto por un momento para que el usuario lo vea,
           // y luego lo cerramos antes de reintentar.
-          setTimeout(() => {
-            isDialogOpen.value = false; // Cierra el diálogo para el reintento
-            console.log(
-              "🚀 Reintentando búsqueda de ganador en 15 segundos..."
-            );
-            // handleSpinButtonClick() es la función que disparará el siguiente giro/intento.
-            handleSpinButtonClick();
-          }, 15000);
+          if (!configuracion.value.mostrar_boton_demo) {
+            setTimeout(() => {
+              isDialogOpen.value = false; // Cierra el diálogo para el reintento
+              console.log(
+                "🚀 Reintentando búsqueda de ganador en 15 segundos..."
+              );
+              // handleSpinButtonClick() es la función que disparará el siguiente giro/intento.
+              handleSpinButtonClick();
+            }, 15000);
+          }
         }
       } catch (error) {
         // --- 4. MANEJO DE ERRORES DE RED O DEL SERVIDOR (ej. sin conexión, error 500) ---
@@ -299,15 +300,16 @@ export default defineComponent({
 
         isDialogOpen.value = true; // Abre el diálogo para mostrar el error técnico al usuario
         playAudio(sounds.value.lose);
-
-        // En caso de error, también reintentamos
-        setTimeout(() => {
-          isDialogOpen.value = false; // Cierra el diálogo antes de reintentar
-          console.log(
-            "🚀 Reintentando búsqueda de ganador después de un error en 15 segundos..."
-          );
-          handleSpinButtonClick();
-        }, 15000);
+        if (!configuracion.value.mostrar_boton_demo) {
+          // En caso de error, también reintentamos
+          setTimeout(() => {
+            isDialogOpen.value = false; // Cierra el diálogo antes de reintentar
+            console.log(
+              "🚀 Reintentando búsqueda de ganador después de un error en 15 segundos..."
+            );
+            handleSpinButtonClick();
+          }, 15000);
+        }
       }
       // NOTA: El 'if (nombreGanador.value == "")' al final de tu versión previa ha sido absorbido
       // en los bloques `else` y `catch` para un control más explícito y mejor gestión del UI.

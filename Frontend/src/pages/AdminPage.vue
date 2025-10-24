@@ -12,14 +12,14 @@
       <!-- TAB CONFIGURACIÓN -->
       <q-tab-panel name="settings">
         <q-toggle
-          v-model="configuracion.mostrar_boton_demo"
+          v-model="mostrarBotonDemo"
           color="green"
           label="Mostrar botón demo"
           @update:model-value="guardarConfiguracion"
         />
 
         <q-toggle
-          v-model="configuracion.auto_girar_ruleta"
+          v-model="autoGirarRuleta"
           color="green"
           label="Auto-girar ruleta"
           @update:model-value="guardarConfiguracion"
@@ -109,7 +109,10 @@
           <template v-slot:append>
             <q-icon name="colorize" class="cursor-pointer">
               <q-popup-proxy>
-                <q-color v-model="configuracion.color_principal" />
+                <q-color
+                  v-model="configuracion.color_principal"
+                  @change="guardarConfiguracion"
+                />
               </q-popup-proxy>
             </q-icon>
           </template>
@@ -124,7 +127,10 @@
           <template v-slot:append>
             <q-icon name="colorize" class="cursor-pointer">
               <q-popup-proxy>
-                <q-color v-model="configuracion.color_secundario" />
+                <q-color
+                  v-model="configuracion.color_secundario"
+                  @change="guardarConfiguracion"
+                />
               </q-popup-proxy>
             </q-icon>
           </template>
@@ -330,9 +336,25 @@ import { useQuasar } from "quasar";
 export default {
   name: "EditableTable",
   setup() {
+    const mostrarBotonDemo = computed({
+      get: () => configuracion.value.mostrar_boton_demo,
+      set: (newValue) => {
+        configuracion.value.mostrar_boton_demo = newValue;
+        configuracion.value.auto_girar_ruleta = !newValue;
+        guardarConfiguracion();
+      },
+    });
+
+    const autoGirarRuleta = computed({
+      get: () => configuracion.value.auto_girar_ruleta,
+      set: (newValue) => {
+        configuracion.value.auto_girar_ruleta = newValue;
+        configuracion.value.mostrar_boton_demo = !newValue;
+        guardarConfiguracion();
+      },
+    });
     const showDateTimePicker = ref(false);
     const fechaTemp = ref("");
-
     const fechaFinalCountdown = computed({
       get: () => {
         if (!configuracion.value.fecha_final_countdown) return "";
@@ -608,7 +630,6 @@ export default {
 
     // Function para hacer el update a la tabla
     const cargarConfiguracion = async () => {
-      debugger;
       try {
         const response = await api.get("/api/configuracion-cliente/");
         configuracion.value = response.data;
@@ -619,6 +640,7 @@ export default {
     };
 
     const guardarConfiguracion = () => {
+      debugger;
       if (timeoutId) clearTimeout(timeoutId);
 
       // Mostrar notificación simple sin números
@@ -799,6 +821,8 @@ export default {
       }
     });
     return {
+      autoGirarRuleta,
+      mostrarBotonDemo,
       resetForm,
       deleteProduct,
       loadProductosBBDD,

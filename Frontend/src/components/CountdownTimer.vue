@@ -21,7 +21,7 @@
         <span>{{ minutes }}</span>
         <p>Minutos</p>
       </div>
-      <div class="time-block">
+      <div class="time-block" v-if="seconds > 0">
         <span>{{ seconds }}</span>
         <p>Segundos</p>
       </div>
@@ -198,10 +198,12 @@ export default {
 
     onMounted(async () => {
       await cargarConfiguracion();
-      updateCountdown();
+      if (!configuracion.value.mostrar_boton_demo) {
+        updateCountdown();
+        countdownInterval = setInterval(updateCountdown, 1000);
+      }
 
       // ✅ Inicializar el interval
-      countdownInterval = setInterval(updateCountdown, 1000);
     });
     onUnmounted(() => {
       // ✅ Limpiar interval al desmontar el componente
