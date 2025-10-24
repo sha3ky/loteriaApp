@@ -25,7 +25,7 @@
             v-if="configuracion.mostrar_boton_demo"
             class="glossy spin-button"
             rounded
-            :style="{ backgroundColor: configuracion.color_principal }"
+            :style="{ backgroundColor: configuracion.color_secundario }"
             :label="configuracion.texto_boton_demo"
             :disabled="isSpinning"
             @click="handleSpinButtonClick"
@@ -75,8 +75,8 @@
           >
             Placeholder text
           </span>
-          <span style="font-weight: 700; color: gold" v-else>
-            {{ winnerResult.text }}
+          <span style="font-weight: 800; color: gold" v-else>
+            {{ winnerResult.text }} - {{ nombreGanador }}
           </span>
         </h5>
       </div>
@@ -97,7 +97,8 @@
           <q-card-section class="dialog-content">
             <div v-if="nombreGanador" class="winner-section">
               <div class="text-h6 winner-title">
-                {{ configuracion.texto_ganador }} - {{ nombreGanador }}
+                {{ configuracion.texto_ganador }} -
+                {{ nombreGanador }}
               </div>
               <div class="sign-container">
                 <div class="sign">
@@ -247,7 +248,7 @@ export default defineComponent({
         const response = await api.get(
           `/api/get-winner/${winnerResult.value.text}/`
         );
-
+        console.log("respuesta", response);
         // --- 2. MANEJO DE RESPUESTA EXITOSA (HTTP Status 2xx) ---
         // Axios usa response.status para el estado HTTP. response.ok es de Fetch API.
         if (response.status >= 200 && response.status < 300) {
@@ -293,10 +294,11 @@ export default defineComponent({
         }
       } catch (error) {
         // --- 4. MANEJO DE ERRORES DE RED O DEL SERVIDOR (ej. sin conexión, error 500) ---
-        console.error(
+        /*  console.error(
           "❌ Error grave al buscar ganador:",
           error.response?.data || error.message || error
-        );
+        ); */
+        console.log("Numero no encontrado");
 
         isDialogOpen.value = true; // Abre el diálogo para mostrar el error técnico al usuario
         playAudio(sounds.value.lose);

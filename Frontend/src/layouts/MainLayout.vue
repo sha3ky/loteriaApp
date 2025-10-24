@@ -3,7 +3,7 @@
     <q-header
       v-if="layoutStore.showToolbar"
       elevated
-      class="bg-purple-3 text-white"
+      :style="{ backgroundColor: configuracion.color_principal }"
     >
       <q-toolbar>
         <q-btn
@@ -124,6 +124,7 @@ export default defineComponent({
   },
 
   setup() {
+    const configuracion = ref({});
     const $q = useQuasar();
     const layoutStore = useLayoutStore();
     const leftDrawerOpen = ref(false);
@@ -182,6 +183,16 @@ export default defineComponent({
         // Opcional: Reiniciamos la cuenta inmediatamente para evitar que
         // se siga abriendo el diálogo en el siguiente clic.
         countClick.value = [];
+      }
+    };
+    const cargarConfiguracion = async () => {
+      try {
+        const response = await api.get("/api/configuracion-cliente/");
+        configuracion.value = response.data;
+        console.log("configuracion.value", configuracion.value);
+      } catch (error) {
+        console.error("❌ Error completo:", error.response?.data);
+        // Muestra el mensaje específico del backend
       }
     };
 
@@ -263,9 +274,11 @@ export default defineComponent({
         sessionStorage.setItem("MainLayout", "true");
         location.reload();
       }
+      cargarConfiguracion();
     });
     return {
       // bingoImage,
+      configuracion,
       logout,
       layoutStore,
       accessAdmin,

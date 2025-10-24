@@ -117,7 +117,7 @@ export default {
 
     // Función para abrir el diálogo
     const openDialog = (number) => {
-      if (!configuracion.value.auto_girar_ruleta) {
+      if (configuracion.value.mostrar_boton_demo) {
         if (isNumberGreen(number)) {
           // console.log("Estado actual:", toRaw(status.value));
           const toRawStatus = toRaw(status.value);

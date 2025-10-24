@@ -1,5 +1,5 @@
 <template>
-  <div v-if="configuracion.fecha_final_countdown">
+  <div v-if="!configuracion.mostrar_boton_demo">
     <div style="display: flex; justify-content: center; margin-bottom: 50px">
       <p style="color: aliceblue; position: absolute">
         {{
