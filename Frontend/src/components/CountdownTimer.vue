@@ -55,11 +55,14 @@ export default {
     const minutes = ref(0);
     const seconds = ref(0);
     let countdownInterval = null;
+    const hasEmittedFinished = ref(false);
+    const isExtended = ref(false);
     // Cargar configuración del cliente
     const cargarConfiguracion = async () => {
       try {
         const response = await api.get("/api/configuracion-cliente/");
         configuracion.value = response.data;
+        console.log("configuracion.value", configuracion.value);
       } catch (error) {
         console.error("❌ Error completo:", error.response?.data);
         // Muestra el mensaje específico del backend
@@ -67,88 +70,123 @@ export default {
     };
 
     const targetDate = computed(() => {
-      if (!configuracion.value.fecha_final_countdown) return null;
-
-      const fechaStr = configuracion.value.fecha_final_countdown;
-      const match = fechaStr.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
-
-      if (match) {
-        const [_, year, month, day, targetHours, targetMinutes] = match;
-
-        // ✅ Forzar la hora EXACTA ignorando zona horaria
-        const targetDate = new Date();
-        targetDate.setFullYear(parseInt(year));
-        targetDate.setMonth(parseInt(month) - 1);
-        targetDate.setDate(parseInt(day));
-        targetDate.setHours(parseInt(targetHours)); // ← 11
-        targetDate.setMinutes(parseInt(targetMinutes)); // ← 33
-        targetDate.setSeconds(0);
-        targetDate.setMilliseconds(0);
-
-        // ✅ RESTAR 2 horas manualmente para compensar
-        targetDate.setHours(targetDate.getHours() - 2);
-
-        console.log("✅ Hora objetivo:", `${targetHours}:${targetMinutes}`);
-        console.log("✅ Fecha FINAL (corregida):", targetDate);
-        console.log(
-          "✅ getHours() después de corrección:",
-          targetDate.getHours()
-        );
-
-        return targetDate.getTime();
+      // Si no hay configuración o no hay fecha de countdown, retornamos null.
+      if (!configuracion.value || !configuracion.value.fecha_final_countdown) {
+        return null;
       }
 
-      return null;
+      const fechaStrOriginal = configuracion.value.fecha_final_countdown;
+
+      // Extraemos los componentes de la fecha y hora de la cadena ISO 8601.
+      // Asumimos el formato "YYYY-MM-DDTHH:mm:ss+00:00" o similar,
+      // extrayendo las partes clave con substring.
+      const year = parseInt(fechaStrOriginal.substring(0, 4));
+      const month = parseInt(fechaStrOriginal.substring(5, 7));
+      const day = parseInt(fechaStrOriginal.substring(8, 10));
+      const hours = parseInt(fechaStrOriginal.substring(11, 13));
+      const minutes = parseInt(fechaStrOriginal.substring(14, 16));
+      // Los segundos se pueden extraer si están presentes, o fijar a 0 si no son críticos
+      // Para tu cadena "2025-10-23T16:12:00+00:00", los segundos son "00"
+      const seconds = parseInt(fechaStrOriginal.substring(17, 19) || "0");
+
+      // Construimos la marca de tiempo UTC utilizando Date.UTC().
+      // Es crucial restar 1 al mes porque JavaScript los indexa desde 0 (Enero=0, Octubre=9).
+      const timestampUTC = Date.UTC(
+        year,
+        month - 1, // Meses son 0-indexados en JavaScript
+        day,
+        hours,
+        minutes,
+        seconds
+      );
+
+      // Opcional: Para una inspección rápida en desarrollo, puedes descomentar estas líneas.
+      // const finalDateFromTimestamp = new Date(timestampUTC);
+      // console.log("Fecha FINAL calculada (UTC):", finalDateFromTimestamp.toUTCString());
+      // console.log("Marca de tiempo FINAL (ms):", timestampUTC);
+
+      return timestampUTC;
     });
 
     const updateCountdown = () => {
       if (!targetDate.value) {
-        console.log("❌ No hay targetDate");
+        console.log(
+          "❌ No hay targetDate.value. La configuración podría no haber cargado o es inválida."
+        );
+        // Podrías decidir si limpiar el interval aquí o esperar. Por ahora, solo salimos.
         return;
       }
 
-      const now = new Date().getTime();
-      const distance = targetDate.value - now;
-
-      console.log("🕒 Countdown - distancia:", distance);
+      const now = new Date().getTime(); // Momento actual en ms
+      let distance = targetDate.value - now; // Distancia restante al targetDate
 
       if (distance <= 0) {
-        console.log("⏰ Countdown terminado o en negativo");
-
+        // --- COUNTDOWN TERMINADO ---
         days.value = 0;
         hours.value = 0;
         minutes.value = 0;
         seconds.value = 0;
 
-        // ✅ VERIFICAR SI HAY EXTENSIÓN CONFIGURADA
-        if (configuracion.value.horas_extension_countdown > 0) {
-          console.log("🔄 Countdown terminado - APLICANDO EXTENSIÓN");
+        // ✅ Lógica para EXTENDER UNA SOLA VEZ
+        // Se ejecuta si hay horas de extensión Y aún no se ha extendido
+        if (
+          configuracion.value.horas_extension_countdown > 0 &&
+          !isExtended.value
+        ) {
+          console.log("🔄 Countdown terminado - APLICANDO EXTENSIÓN UNA VEZ");
 
-          // ✅ CALCULAR NUEVA FECHA con la extensión
           const horasExtension = configuracion.value.horas_extension_countdown;
-          const nuevaFecha = new Date();
-          nuevaFecha.setHours(nuevaFecha.getHours() + horasExtension);
 
-          // ✅ ACTUALIZAR la fecha en la configuración
-          configuracion.value.fecha_final_countdown = nuevaFecha.toISOString();
+          // Calculamos la nueva fecha sumando las horas de extensión al targetDate original.
+          const nuevaMarcaTiempoExtendida =
+            targetDate.value + horasExtension * 60 * 60 * 1000;
+          const nuevaFechaExtendida = new Date(nuevaMarcaTiempoExtendida);
 
-          console.log(`⏰ Nueva fecha con extensión: ${nuevaFecha}`);
+          configuracion.value.fecha_final_countdown =
+            nuevaFechaExtendida.toISOString();
 
-          // ✅ NO emitir finished=true porque se está extendiendo
-          // ✅ NO limpiar el interval - que siga con la nueva fecha
+          isExtended.value = true; // Marcamos que ya se extendió
+
+          console.log(
+            `⏰ Nueva fecha con extensión: ${nuevaFechaExtendida.toISOString()}`
+          );
+
+          // IMPORTANTE: NO hacemos 'emit' ni limpiamos el interval aquí.
+          // El countdown ahora se reanuda con la nueva fecha extendida.
         } else {
-          // ✅ NO hay extensión - terminar definitivamente
-          console.log("⏹️ Countdown terminado DEFINITIVAMENTE");
-          emit("countdown-finished", true);
+          // ✅ CONDICIÓN FINAL DE TERMINACIÓN:
+          // Esto se ejecuta si:
+          // 1. No hay extensión configurada
+          // 2. O ya se extendió una vez y la extensión TAMBIÉN ha terminado (distance <= 0 nuevamente)
 
-          /* if (countdownInterval) {
+          if (!hasEmittedFinished.value) {
+            // Solo emitimos si no lo hemos hecho ya
+            console.log(
+              "⏹️ Countdown terminado DEFINITIVAMENTE. Emitiendo evento."
+            );
+            emit("countdown-finished", true);
+            hasEmittedFinished.value = true; // Marcamos que ya se emitió el evento final.
+          }
+
+          // ✅ Limpiar el interval SOLO cuando se ha terminado definitivamente y se ha emitido el evento
+          if (countdownInterval) {
             clearInterval(countdownInterval);
             countdownInterval = null;
-            console.log("🛑 Interval limpiado");
-          } */
+            console.log("🛑 Interval limpiado (final definitivo)");
+          }
         }
       } else {
-        // Countdown ACTIVO
+        // --- COUNTDOWN ACTIVO ---
+        // Si la distancia es positiva, el countdown está funcionando.
+        // Aseguramos que las banderas de control estén en estado de "no terminado/no extendido" si es necesario.
+        if (isExtended.value) {
+          // Si el countdown se puso activo de nuevo (ej. se extendió y se está contando)
+          isExtended.value = false; // Resetear para permitir futuras extensiones si la configuración cambia o se resetea.
+        }
+        if (hasEmittedFinished.value) {
+          hasEmittedFinished.value = false; // Resetear si el countdown vuelve a estar activo (raro, pero previene problemas)
+        }
+
         days.value = Math.floor(distance / (1000 * 60 * 60 * 24));
         hours.value = Math.floor(
           (distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)

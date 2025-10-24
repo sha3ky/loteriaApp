@@ -109,7 +109,8 @@
             </div>
             <div v-else class="try-again-section">
               <div class="text-h6 try-again-title">
-                Vuelve a probar otra vez. Sin número asignado.
+                "Lo sentimos, no hay ganador en este momento. La ruleta girará
+                de nuevo automáticamente."
               </div>
             </div>
           </q-card-section>
@@ -178,19 +179,20 @@ export default defineComponent({
         await searchWinner(); // Llamar a la función asíncrona aquí
       }
     });
+
     const handleCountdownStatus = (status) => {
-      debugger;
       if (status) {
         console.log(
           "🎯 Countdown TERMINADO - ejecutar acción principal en 5 segundos"
         );
+
         handleSpinButtonClick();
       }
     };
 
     // Ejemplo de funciones que podrías llamar:
 
-    const handleSpinButtonClick = () => {
+    const handleSpinButtonClick = async () => {
       stopAllSounds(); // Detener todos los sonidos antes de iniciar el giro
       if (
         !isSpinning.value &&
@@ -200,16 +202,28 @@ export default defineComponent({
         isSpinning.value = true;
         showConfetti.value = false;
         playAudio(sounds.value.spinButtonClick); // Reproduce el sonido de click
-        defaultWinner.value = Math.floor(Math.random() * 50) + 1;
+        defaultWinner.value = await girarRuleta();
         // defaultWinner.value = 5;
-        console.log("defaultWinner.value", defaultWinner.value);
         spinner.value.spinWheel(defaultWinner.value);
+      }
+    };
+
+    const girarRuleta = async () => {
+      try {
+        const response = await api.get("/api/girar-ruleta/");
+        // ✅ Devolver el número ganador desde dentro del try
+        return response.data.ganador;
+      } catch (error) {
+        console.error("❌ Error completo:", error.response?.data);
+        // ✅ Devolver un valor por defecto o null en caso de error
+        return null;
       }
     };
     const cargarConfiguracion = async () => {
       try {
         const response = await api.get("/api/configuracion-cliente/");
         configuracion.value = response.data;
+        console.log(" configuracion.value ", configuracion.value);
       } catch (error) {
         console.error("❌ Error completo:", error.response?.data);
         // Muestra el mensaje específico del backend
@@ -227,41 +241,77 @@ export default defineComponent({
     };
 
     const searchWinner = async () => {
-      // ❌ ELIMINA ESTE WHILE - está mal y no hace falta
-      // while ((nombreGanador.value = "")) {}
-
       try {
+        // --- 1. LLAMADA A LA API ---
+        // Asumo que winnerResult.value.text contiene el ID/número del posible ganador.
+        // Asumo que `api` es una instancia de Axios o similar.
         const response = await api.get(
           `/api/get-winner/${winnerResult.value.text}/`
         );
 
-        if (response.ok) {
-          const winner = await response.json();
+        // --- 2. MANEJO DE RESPUESTA EXITOSA (HTTP Status 2xx) ---
+        // Axios usa response.status para el estado HTTP. response.ok es de Fetch API.
+        if (response.status >= 200 && response.status < 300) {
+          const winner = response.data; // Para Axios, los datos están en response.data
           nombreGanador.value = winner.nombre_completo;
-          isDialogOpen.value = true;
+          isDialogOpen.value = true; // Abre el diálogo para mostrar el ganador
 
           playAudio(sounds.value.won);
           showConfetti.value = true;
           sounds.value.won.onended = () => {
+            // Detiene el confeti cuando termina el audio
             showConfetti.value = false;
+            // Opcional: Podrías emitir un evento 'winner-found' aquí si este componente
+            // tiene la capacidad de emitir y es un componente de Vue.
+            // emit("winner-found", winner);
           };
+          // No se necesita setTimeout aquí porque ya hay un ganador.
+          // La función terminará aquí.
         } else {
-          console.error("Error al obtener el estado de los números.");
-          isDialogOpen.value = true;
+          // --- 3. MANEJO DE RESPUESTA NO EXITOSA (HTTP Status no 2xx) ---
+          // Esto podría significar que el backend indica explícitamente que no hay ganador o un error controlado.
+          console.warn(
+            "⚠️ No se encontró un ganador válido (status:",
+            response.status,
+            "). Preparando reintento..."
+          );
+
+          isDialogOpen.value = true; // Abre el diálogo para un mensaje de "no ganador" o error
           playAudio(sounds.value.lose);
 
-          isDialogOpen.value = false;
-          // ✅ Esto ya hace que se repita
+          // Mantenemos el diálogo abierto por un momento para que el usuario lo vea,
+          // y luego lo cerramos antes de reintentar.
           setTimeout(() => {
+            isDialogOpen.value = false; // Cierra el diálogo para el reintento
             console.log(
-              "🚀 Ejecutando handleSpinButtonClick después de 5 segundos"
+              "🚀 Reintentando búsqueda de ganador en 15 segundos..."
             );
+            // handleSpinButtonClick() es la función que disparará el siguiente giro/intento.
             handleSpinButtonClick();
-          }, 15000); // 5 segundos de espera
+          }, 15000);
         }
       } catch (error) {
-        console.error("Error al actualizar el estado:", error);
+        // --- 4. MANEJO DE ERRORES DE RED O DEL SERVIDOR (ej. sin conexión, error 500) ---
+        console.error(
+          "❌ Error grave al buscar ganador:",
+          error.response?.data || error.message || error
+        );
+
+        isDialogOpen.value = true; // Abre el diálogo para mostrar el error técnico al usuario
+        playAudio(sounds.value.lose);
+
+        // En caso de error, también reintentamos
+        setTimeout(() => {
+          isDialogOpen.value = false; // Cierra el diálogo antes de reintentar
+          console.log(
+            "🚀 Reintentando búsqueda de ganador después de un error en 15 segundos..."
+          );
+          handleSpinButtonClick();
+        }, 15000);
       }
+      // NOTA: El 'if (nombreGanador.value == "")' al final de tu versión previa ha sido absorbido
+      // en los bloques `else` y `catch` para un control más explícito y mejor gestión del UI.
+      // Esto asegura que `setTimeout` se ejecute SÓLO cuando no hay un ganador exitoso.
     };
 
     const handleSpinButtonHover = () => playAudio(sounds.value.spinButtonHover);
@@ -281,7 +331,7 @@ export default defineComponent({
       }
       // Configura el ganador y termina el giro
       isSpinning.value = false;
-      winnerResult.value = slices.value[winnerIndex];
+      winnerResult.value = slices.value[winnerIndex]; // aqui hacemos el watch de winner cuando llegamos al final
     };
     // Función para detener un audio específico
     const stopAudio = (audio) => {

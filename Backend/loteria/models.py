@@ -109,7 +109,7 @@ class Sorteo(models.Model):
         validators=[MinValueValidator(1), MaxValueValidator(100)]  # ✅ Mismo rango que personas
     )
     fecha = models.DateTimeField(auto_now_add=True)
-    admin = models.ForeignKey(User, on_delete=models.CASCADE)
+ 
     
     class Meta:
         ordering = ['-fecha']  # ✅ Ordenar por fecha descendente

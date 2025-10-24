@@ -81,36 +81,30 @@ TELEGRAM_CHAT_ID = settings.TELEGRAM_CHAT_ID
 
  """
 class GirarRuletaView(APIView):
-    permission_classes = [IsAuthenticated]
-    
-    def post(self, request):
-        cliente_token = request.headers.get('X-Cliente-Token')
-        if not cliente_token:
-            return Response({"error": "Se requiere X-Cliente-Token"}, status=400)
-        
-        cliente = Cliente.objects.get(token=cliente_token)
-        
-        if not request.user.is_staff:
-            return Response({"error": "No autorizado"}, status=403)
-        
-        ganador = random.randint(1, 50)
-        
-        sorteo = Sorteo.objects.create(
-            cliente=cliente,
-            numero_ganador=ganador,
-            fecha=timezone.now(),
-            admin=request.user
-        )
-        
-        # TEMPORAL: Sin WebSocket - solo log
-        print(f"🎯 Ruleta girada - Cliente: {cliente.nombre} - Ganador: {ganador}")
-        
-        return Response({
-            'ganador': ganador, 
-            'sorteo_id': sorteo.id,
-            'message': 'Ruleta girada (sin WebSocket - modo prueba)'
-        })
-
+    def get(self, request):
+        try:
+            cliente_token = request.headers.get('X-Cliente-Token') or request.GET.get('token')
+            if not cliente_token:
+                return Response({"error": "Se requiere token"}, status=400)
+            
+            cliente = Cliente.objects.get(token=cliente_token)
+            
+            ganador = random.randint(1, 50)
+            
+            sorteo = Sorteo.objects.create(
+                cliente=cliente,
+                numero_ganador=ganador,
+                fecha=timezone.now(),
+            )
+            
+            return Response({'ganador': ganador})
+            
+        except Cliente.DoesNotExist:
+            return Response({"error": "Cliente no encontrado"}, status=404)
+        except Exception as e:
+            print(f"❌ Error en girar-ruleta: {e}")
+            return Response({"error": "Error interno del servidor"}, status=500)
+            
 # //eliminar producto
 class ProductoDeleteView(APIView):
     def delete(self, request, producto_id):
